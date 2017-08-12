@@ -7,4 +7,4 @@ import App
 
 
 main =
-    Html.program App.program
+    Html.programWithFlags App.programWithFlags

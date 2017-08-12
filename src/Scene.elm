@@ -26,6 +26,7 @@ perspectiveAndcamera viewportWidth viewportHeight =
         Mat4.mul perspective camera
 
 
+{-| TODO Add viewer player as argument -}
 entities : { width : Int, height : Int } -> Game -> List WebGL.Entity
 entities viewport game =
     let

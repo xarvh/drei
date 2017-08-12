@@ -1,2 +1,2 @@
 default:
-	elm-make --yes Main.elm --output=index.html
+	elm-make --yes Main.elm --output=build/app.js

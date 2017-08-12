@@ -1,7 +1,9 @@
-module App exposing (program)
+module App exposing (programWithFlags)
 
-import AnimationFrame
 import Game exposing (Game)
+import Gamepad
+import GamepadPort
+import LocalStoragePort
 import Html exposing (..)
 import Html.Attributes as HA
 import Input
@@ -16,25 +18,41 @@ import Player
 
 type alias Model =
     { game : Game
+    , gamepadDatabase : Gamepad.Database
+    , gamepadDatabaseKey : String -- This is the key we use for the database in the browser's local storage
     , pressedKeys : List Key
     , windowSize : Window.Size
     }
 
 
 type Msg
-    = OnAnimationFrame Time
+    = OnGamepad ( Time, Gamepad.Blob )
     | OnKeyboardMsg Keyboard.Extra.Msg
     | OnWindowResizes Window.Size
 
 
-init =
+type alias Flags =
+    { gamepadDatabaseAsString : String
+    , gamepadDatabaseKey : String
+    }
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
     let
+        gamepadDatabase =
+            flags.gamepadDatabaseAsString
+                |> Gamepad.databaseFromString
+                |> Result.withDefault Gamepad.emptyDatabase
+
         game =
             Game.init
                 |> Game.addPlayer Player.KeyboardAndMouse
                 |> Tuple.second
     in
         ( { game = game
+          , gamepadDatabase = gamepadDatabase
+          , gamepadDatabaseKey = flags.gamepadDatabaseKey
           , pressedKeys = []
           , windowSize =
                 { width = 100
@@ -48,10 +66,10 @@ init =
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        OnAnimationFrame dt ->
+        OnGamepad ( dt, blob ) ->
             let
                 oldGame =
-                  model.game
+                    model.game
 
                 players =
                     Input.updatePlayersInput model.pressedKeys oldGame.players
@@ -87,13 +105,13 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ AnimationFrame.diffs OnAnimationFrame
+        [ GamepadPort.gamepad OnGamepad
         , Window.resizes OnWindowResizes
         , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
         ]
 
 
-program =
+programWithFlags =
     { init = init
     , update = \msg model -> ( update msg model, Cmd.none )
     , view = view
