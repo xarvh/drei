@@ -4,6 +4,7 @@ import AnimationFrame
 import Game exposing (Game)
 import Html exposing (..)
 import Html.Attributes as HA
+import Input
 import Keyboard.Extra exposing (Key)
 import Task
 import Time exposing (Time)
@@ -48,7 +49,17 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         OnAnimationFrame dt ->
-            { model | game = Game.think dt model.game }
+            let
+                oldGame =
+                  model.game
+
+                players =
+                    Input.updatePlayersInput model.pressedKeys oldGame.players
+
+                game =
+                    { oldGame | players = players }
+            in
+                { model | game = Game.think dt game }
 
         OnKeyboardMsg keyboardMsg ->
             { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }

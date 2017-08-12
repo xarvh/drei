@@ -17,8 +17,6 @@ type alias InputState =
 
 type alias Player =
     { id : Int
-
-    -- TODO: instead than giving input sources to players, assign a player to each input source
     , inputSource : InputSource
     , inputState : InputState
     }
