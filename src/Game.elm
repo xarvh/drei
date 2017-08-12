@@ -4,6 +4,7 @@ import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Dict exposing (Dict)
 import Hero exposing (Hero)
 import Player exposing (Player, InputSource)
+import Time exposing (Time)
 
 
 -- Game
@@ -99,6 +100,40 @@ addHero player oldGame =
 -- Think
 
 
-think : Float -> Game -> Game
-think dt game =
-    game
+{-| meters per second
+-}
+maxHeroSpeed =
+    0.5
+
+
+thinkHero : Game -> Time -> Int -> Hero -> Hero
+thinkHero game dt id hero =
+    case Dict.get hero.playerId game.players of
+        Nothing ->
+            hero
+
+        Just player ->
+            let
+                -- meters per second
+                velocity =
+                    Vec2.scale maxHeroSpeed player.inputState.move
+
+                dp =
+                    Vec2.scale dt velocity
+
+                position =
+                    Vec2.add hero.position dp
+            in
+                { hero | position = position }
+
+
+think : Time -> Game -> Game
+think dtAsTime game =
+    let
+        dt =
+            Time.inSeconds dtAsTime
+
+        heroes =
+            game.heroes |> Dict.map (thinkHero game dt)
+    in
+        { game | heroes = heroes }
