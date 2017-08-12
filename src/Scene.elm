@@ -1,11 +1,13 @@
 module Scene exposing (..)
 
+import Dict
 import Color exposing (Color)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import WebGL exposing (Mesh, Shader)
-import Player
+import Game exposing (Game)
+import Hero
 import Plane
 
 
@@ -24,24 +26,21 @@ perspectiveAndcamera viewportWidth viewportHeight =
         Mat4.mul perspective camera
 
 
-entities : { width : Int, height : Int } -> Float -> List WebGL.Entity
-entities viewport time =
+entities : { width : Int, height : Int } -> Game -> List WebGL.Entity
+entities viewport game =
     let
         pnc =
             perspectiveAndcamera viewport.width viewport.height
 
-        player =
-            { position = vec2 0.3 0.3
-            }
-
-        players =
-            [ Player.entity pnc player
-            ]
+        heroes =
+            game.heroes
+              |> Dict.values
+              |> List.map (Hero.entity pnc)
 
         planeTiles =
             Plane.entities pnc
     in
         List.concat
             [ planeTiles
-            , players
+            , heroes
             ]

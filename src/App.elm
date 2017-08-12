@@ -1,42 +1,57 @@
 module App exposing (program)
 
 import AnimationFrame
+import Game exposing (Game)
 import Html exposing (..)
 import Html.Attributes as HA
+import Keyboard.Extra exposing (Key)
 import Task
 import Time exposing (Time)
 import Scene
 import WebGL
 import Window
+import Player
 
 
 type alias Model =
-    { time : Time
+    { game : Game
+    , pressedKeys : List Key
     , windowSize : Window.Size
     }
 
 
 type Msg
     = OnAnimationFrame Time
+    | OnKeyboardMsg Keyboard.Extra.Msg
     | OnWindowResizes Window.Size
 
 
 init =
-    ( { time = 0
-      , windowSize =
-            { width = 100
-            , height = 100
-            }
-      }
-    , Task.perform OnWindowResizes Window.size
-    )
+    let
+        game =
+            Game.init
+                |> Game.addPlayer Player.KeyboardAndMouse
+                |> Tuple.second
+    in
+        ( { game = game
+          , pressedKeys = []
+          , windowSize =
+                { width = 100
+                , height = 100
+                }
+          }
+        , Task.perform OnWindowResizes Window.size
+        )
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         OnAnimationFrame dt ->
-            { model | time = model.time + dt }
+            { model | game = Game.think dt model.game }
+
+        OnKeyboardMsg keyboardMsg ->
+            { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
 
         OnWindowResizes size ->
             { model | windowSize = size }
@@ -54,7 +69,7 @@ view model =
             [ HA.width model.windowSize.width
             , HA.height model.windowSize.height
             ]
-            (Scene.entities model.windowSize model.time)
+            (Scene.entities model.windowSize model.game)
         ]
 
 
@@ -63,6 +78,7 @@ subscriptions model =
     Sub.batch
         [ AnimationFrame.diffs OnAnimationFrame
         , Window.resizes OnWindowResizes
+        , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
         ]
 
 
