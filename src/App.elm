@@ -44,26 +44,18 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    let
-        -- assuming landscape ratio
-        height =
-            model.windowSize.height
-
-        width =
-            toFloat model.windowSize.height * Scene.viewportWidthHeightRatio |> round
-    in
-        div
-            [ HA.style
-                [ ( "display", "flex" )
-                , ( "justify-content", "center" )
-                ]
+    div
+        [ HA.style
+            [ ( "display", "flex" )
+            , ( "justify-content", "center" )
             ]
-            [ WebGL.toHtml
-                [ HA.width width
-                , HA.height height
-                ]
-                (Scene.entities model.time)
+        ]
+        [ WebGL.toHtml
+            [ HA.width model.windowSize.width
+            , HA.height model.windowSize.height
             ]
+            (Scene.entities model.windowSize model.time)
+        ]
 
 
 subscriptions : Model -> Sub Msg
