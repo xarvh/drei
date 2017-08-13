@@ -92,23 +92,29 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        maybeViewer =
-            model.game.players
-                |> Dict.values
-                |> List.head
+        viewportsSize =
+            { width = model.windowSize.width // 2 - 4
+            , height = model.windowSize.height - 4
+            }
+
+        playerView player =
+            WebGL.toHtml
+                [ HA.width viewportsSize.width
+                , HA.height viewportsSize.height
+                , HA.style [ ( "border", "2px solid #e7e7e7" ) ]
+                ]
+                (Scene.entities (Just player) viewportsSize model.game)
     in
-        div
-            [ HA.style
-                [ ( "display", "flex" )
-                , ( "justify-content", "center" )
+        model.game.players
+            |> Dict.values
+            |> List.sortBy .id
+            |> List.map playerView
+            |> div
+                [ HA.style
+                    [ ( "display", "flex" )
+                    , ( "justify-content", "space-around" )
+                    ]
                 ]
-            ]
-            [ WebGL.toHtml
-                [ HA.width model.windowSize.width
-                , HA.height model.windowSize.height
-                ]
-                (Scene.entities maybeViewer model.windowSize model.game)
-            ]
 
 
 subscriptions : Model -> Sub Msg
