@@ -5,11 +5,12 @@ import Game exposing (Game)
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (style)
-import Input
+import Html.Attributes exposing (class, style)
 import Keyboard.Extra exposing (Key)
+import Input
+import List.Extra
 import LocalStoragePort
-import Player
+import Player exposing (Player)
 import Task
 import Time exposing (Time)
 import Scene
@@ -46,8 +47,12 @@ type Msg
 init : ( Model, Cmd Msg )
 init =
     let
-        ( player, game ) =
-            Game.init |> Game.addPlayer
+        game =
+            Game.init
+              |> Game.addPlayer |> Tuple.second
+              |> Game.addPlayer |> Tuple.second
+              |> Game.addPlayer |> Tuple.second
+              |> Game.addPlayer |> Tuple.second
     in
         ( { game = game
           , pressedKeys = []
@@ -112,32 +117,58 @@ update config msg model =
 -- view
 
 
+shrinkViewport : Int -> Window.Size -> Window.Size
+shrinkViewport shrink viewport =
+    { width = viewport.width - shrink
+    , height = viewport.height - shrink
+    }
+
+
+splitScreen : Window.Size -> Int -> ( Int, Window.Size )
+splitScreen windowSize playersNumber =
+    -- TODO drop the assumption that the screen is landscape
+    case playersNumber of
+        0 ->
+            ( 1, windowSize )
+
+        1 ->
+            ( 1, windowSize )
+
+        2 ->
+            ( 2, { windowSize | width = windowSize.width // 2 } )
+
+        3 ->
+            ( 3, { windowSize | width = windowSize.width // 3 } )
+
+        _ ->
+            ( 2, { width = windowSize.width // 2, height = windowSize.height // 2 } )
+
+
 view : Model -> Html Msg
 view model =
     let
-        viewportsSize =
-            { width = model.windowSize.width // 2 - 4
-            , height = model.windowSize.height - 4
-            }
+        sortedPlayers =
+            model.game.players
+                |> Dict.values
+                |> List.sortBy .id
 
-        playerView player =
+        ( columns, viewportsSize ) =
+            splitScreen model.windowSize (List.length sortedPlayers)
+                |> Tuple.mapSecond (shrinkViewport 4)
+
+        viewPlayer player =
             WebGL.toHtml
                 [ Html.Attributes.width viewportsSize.width
                 , Html.Attributes.height viewportsSize.height
-                , style [ ( "border", "2px solid #e7e7e7" ) ]
+                , class "playerViewport"
                 ]
                 (Scene.entities (Just player) viewportsSize model.game)
     in
-        model.game.players
-            |> Dict.values
-            |> List.sortBy .id
-            |> List.map playerView
-            |> div
-                [ style
-                    [ ( "display", "flex" )
-                    , ( "justify-content", "space-around" )
-                    ]
-                ]
+        sortedPlayers
+            |> List.map viewPlayer
+            |> List.Extra.groupsOf columns
+            |> List.map (div [ class "playerViewport-Row" ])
+            |> div [ class "playerViewport-Rows" ]
 
 
 

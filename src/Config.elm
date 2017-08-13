@@ -4,7 +4,7 @@ import App
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (style, value, selected, disabled)
+import Html.Attributes exposing (class, disabled, style, selected, value)
 import Html.Events
 import Json.Decode
 import Keyboard
@@ -82,25 +82,20 @@ noCmd model =
     ( model, Cmd.none )
 
 
-appUpdate : App.Msg -> Model -> ( Model, Cmd Msg )
-appUpdate appMsg model =
-    let
-        ( appModel, appCmd ) =
-            App.update
-                { maybeInputConfig = model.maybeInputConfig
-                , gamepadDatabase = model.gamepadDatabase
-                }
-                appMsg
-                model.app
-    in
-        ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        OnAppMsg msg ->
-            appUpdate msg model
+        OnAppMsg appMsg ->
+            let
+                ( appModel, appCmd ) =
+                    App.update
+                        { maybeInputConfig = model.maybeInputConfig
+                        , gamepadDatabase = model.gamepadDatabase
+                        }
+                        appMsg
+                        model.app
+            in
+                ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
 
         OnGamepad ( dt, blob ) ->
             let
@@ -113,12 +108,19 @@ update msg model =
                     blob
                         |> Gamepad.getAllGamepadsAsUnknown
                         |> List.length
+
+                -- Stop app time updates when the modal is open
+                appUpdate =
+                    if model.maybeModal == Nothing then
+                        ( dt, blob ) |> App.OnAnimationFrame |> OnAppMsg |> update
+                    else
+                        noCmd
             in
-                { model
-                    | hasGamepads = allGamepads > 0
-                    , hasKnownGamepads = knownGamepads > 0
-                }
-                    |> appUpdate (App.OnAnimationFrame ( dt, blob ))
+                appUpdate
+                    { model
+                        | hasGamepads = allGamepads > 0
+                        , hasKnownGamepads = knownGamepads > 0
+                    }
 
         OnKey code ->
             case code of
@@ -246,12 +248,7 @@ subscriptions model =
     Sub.batch
         [ Keyboard.ups OnKey
         , GamepadPort.gamepad OnGamepad
-        , case model.maybeModal of
-            Nothing ->
-                App.subscriptions model.app |> Sub.map OnAppMsg
-
-            Just Main ->
-                Sub.none
+        , App.subscriptions model.app |> Sub.map OnAppMsg
         ]
 
 
