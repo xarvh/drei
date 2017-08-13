@@ -50,15 +50,25 @@ gamepadToInputState gamepad =
 
 
 updatePlayersInput :
-    { config : Config
-    , blob : Gamepad.Blob
-    , gamepadDatabase : Gamepad.Database
+    { gamepads : List Gamepad
+    , maybeConfig : Maybe Config
     , pressedKeys : List Key
     }
     -> Dict Int Player
     -> Dict Int Player
-updatePlayersInput { config, blob, gamepadDatabase, pressedKeys } players =
+updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
     let
+        config =
+            case maybeConfig of
+                Just config ->
+                    config
+
+                Nothing ->
+                    if List.length gamepads > 0 then
+                        AllPlayersUseGamepads
+                    else
+                        Player1UsesKeyboardAndMouse
+
         sortedPlayers =
             players
                 |> Dict.values
@@ -73,8 +83,7 @@ updatePlayersInput { config, blob, gamepadDatabase, pressedKeys } players =
                     [ keyboardToInputState pressedKeys ]
 
         gamepadInputs =
-            blob
-                |> Gamepad.getGamepads Gamepad.emptyDatabase
+            gamepads
                 |> List.sortBy Gamepad.getIndex
                 |> List.map gamepadToInputState
 

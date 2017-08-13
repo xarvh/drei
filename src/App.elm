@@ -1,4 +1,4 @@
-module App exposing (programWithFlags)
+module App exposing (..)
 
 import Dict
 import Game exposing (Game)
@@ -9,7 +9,6 @@ import Html.Attributes exposing (style)
 import Input
 import Keyboard.Extra exposing (Key)
 import LocalStoragePort
-import Modal
 import Player
 import Task
 import Time exposing (Time)
@@ -21,11 +20,14 @@ import Window
 -- types
 
 
+type alias Config =
+    { maybeInputConfig : Maybe Input.Config
+    , gamepadDatabase : Gamepad.Database
+    }
+
+
 type alias Model =
     { game : Game
-    , gamepadDatabase : Gamepad.Database
-    , gamepadDatabaseKey : String -- This is the key we use for the database in the browser's local storage
-    , maybeModal : Maybe Modal.Model
     , pressedKeys : List Key
     , windowSize : Window.Size
     }
@@ -34,28 +36,16 @@ type alias Model =
 type Msg
     = OnAnimationFrame ( Time, Gamepad.Blob )
     | OnKeyboardMsg Keyboard.Extra.Msg
-    | OnModalMsg Modal.Msg
     | OnWindowResizes Window.Size
-
-
-type alias Flags =
-    { gamepadDatabaseAsString : String
-    , gamepadDatabaseKey : String
-    }
 
 
 
 -- init
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+init : ( Model, Cmd Msg )
+init =
     let
-        gamepadDatabase =
-            flags.gamepadDatabaseAsString
-                |> Gamepad.databaseFromString
-                |> Result.withDefault Gamepad.emptyDatabase
-
         game =
             Game.init
                 |> Game.addPlayer
@@ -64,9 +54,6 @@ init flags =
                 |> Tuple.second
     in
         ( { game = game
-          , gamepadDatabase = gamepadDatabase
-          , gamepadDatabaseKey = flags.gamepadDatabaseKey
-          , maybeModal = Nothing --Just Modal.initSplash
           , pressedKeys = []
           , windowSize =
                 { width = 100
@@ -85,64 +72,34 @@ noCmd model =
     ( model, Cmd.none )
 
 
-updateAnimationFrame : Time -> Gamepad.Blob -> Model -> ( Model, Cmd Msg )
-updateAnimationFrame dt blob model =
-    if model.maybeModal /= Nothing then
-        noCmd model
-    else
-        let
-            oldGame =
-                model.game
-
-            players =
-                Input.updatePlayersInput
-                  { config = Input.Player1UsesKeyboardAndMouse
-                  , blob = blob
-                  , gamepadDatabase = model.gamepadDatabase
-                  , pressedKeys = model.pressedKeys
-                  }
-                  oldGame.players
-
-            game =
-                { oldGame | players = players }
-        in
-            noCmd { model | game = Game.think dt game }
-
-
-updateModal : ( Modal.Outcome, Cmd Modal.Msg ) -> Model -> ( Model, Cmd Msg )
-updateModal ( modalOutcome, modalCmd ) model =
+updateAnimationFrame : Config -> Time -> Gamepad.Blob -> Model -> ( Model, Cmd Msg )
+updateAnimationFrame config dt blob model =
     let
-        newModel =
-            case modalOutcome of
-                Modal.StillOpen modalModel ->
-                    { model | maybeModal = Just modalModel }
+        oldGame =
+            model.game
 
-                -- TODO: Add Modal.UpdateGamepadDatabase
-                Modal.Close ->
-                    { model | maybeModal = Nothing }
+        players =
+            Input.updatePlayersInput
+                { gamepads = Gamepad.getGamepads config.gamepadDatabase blob
+                , maybeConfig = config.maybeInputConfig
+                , pressedKeys = model.pressedKeys
+                }
+                oldGame.players
 
-        cmd =
-            Cmd.map OnModalMsg modalCmd
+        game =
+            { oldGame | players = players }
     in
-        ( model, cmd )
+        noCmd { model | game = Game.think dt game }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Config -> Msg -> Model -> ( Model, Cmd Msg )
+update config msg model =
     case msg of
         OnAnimationFrame ( dt, blob ) ->
-            updateAnimationFrame dt blob model
+            updateAnimationFrame config dt blob model
 
         OnKeyboardMsg keyboardMsg ->
             noCmd { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
-
-        OnModalMsg modalMsg ->
-            case model.maybeModal of
-                Nothing ->
-                    noCmd model
-
-                Just modalModel ->
-                    updateModal (Modal.update modalMsg modalModel) model
 
         OnWindowResizes size ->
             noCmd { model | windowSize = size }
@@ -168,26 +125,16 @@ view model =
                 ]
                 (Scene.entities (Just player) viewportsSize model.game)
     in
-        div
-            [ style
-                [ ( "position", "relative" ) ]
-            ]
-            [ model.game.players
-                |> Dict.values
-                |> List.sortBy .id
-                |> List.map playerView
-                |> div
-                    [ style
-                        [ ( "display", "flex" )
-                        , ( "justify-content", "space-around" )
-                        ]
+        model.game.players
+            |> Dict.values
+            |> List.sortBy .id
+            |> List.map playerView
+            |> div
+                [ style
+                    [ ( "display", "flex" )
+                    , ( "justify-content", "space-around" )
                     ]
-            , model.maybeModal
-                |> Maybe.map Modal.view
-                |> Debug.log "aaa"
-                |> Maybe.withDefault (text "")
-                |> Html.map OnModalMsg
-            ]
+                ]
 
 
 
@@ -200,20 +147,4 @@ subscriptions model =
         [ GamepadPort.gamepad OnAnimationFrame
         , Window.resizes OnWindowResizes
         , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
-        , model.maybeModal
-            |> Maybe.map Modal.subscriptions
-            |> Maybe.withDefault Sub.none
-            |> Sub.map OnModalMsg
         ]
-
-
-
--- program
-
-
-programWithFlags =
-    { init = init
-    , update = update
-    , view = view
-    , subscriptions = subscriptions
-    }
