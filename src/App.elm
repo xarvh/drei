@@ -34,7 +34,7 @@ type alias Model =
 
 
 type Msg
-    = OnAnimationFrame ( Time, Gamepad.Blob )
+    = OnAnimationFrame ( Time, Gamepad.Blob ) -- This one is called directly by Config
     | OnKeyboardMsg Keyboard.Extra.Msg
     | OnWindowResizes Window.Size
 
@@ -144,7 +144,6 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ GamepadPort.gamepad OnAnimationFrame
-        , Window.resizes OnWindowResizes
+        [ Window.resizes OnWindowResizes
         , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
         ]

@@ -79,20 +79,25 @@ noCmd model =
     ( model, Cmd.none )
 
 
+appUpdate : App.Msg -> Model -> ( Model, Cmd Msg )
+appUpdate appMsg model =
+    let
+        ( appModel, appCmd ) =
+            App.update
+                { maybeInputConfig = model.maybeInputConfig
+                , gamepadDatabase = model.gamepadDatabase
+                }
+                appMsg
+                model.app
+    in
+        ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         OnAppMsg msg ->
-            let
-                ( appModel, appCmd ) =
-                    App.update
-                        { maybeInputConfig = model.maybeInputConfig
-                        , gamepadDatabase = model.gamepadDatabase
-                        }
-                        msg
-                        model.app
-            in
-                ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
+            appUpdate msg model
 
         OnGamepad ( dt, blob ) ->
             let
@@ -110,7 +115,7 @@ update msg model =
                     | hasGamepads = allGamepads > 0
                     , hasKnownGamepads = knownGamepads > 0
                 }
-                    |> noCmd
+                    |> appUpdate (App.OnAnimationFrame ( dt, blob ))
 
         OnKey code ->
             case code of
@@ -210,12 +215,13 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Keyboard.ups OnKey
+        , GamepadPort.gamepad OnGamepad
         , case model.maybeModal of
             Nothing ->
                 App.subscriptions model.app |> Sub.map OnAppMsg
 
             Just Main ->
-                GamepadPort.gamepad OnGamepad
+                Sub.none
         ]
 
 
