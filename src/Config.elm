@@ -2,9 +2,12 @@ module Config exposing (..)
 
 import App
 import Gamepad
+import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (style)
+import Keyboard
 import Input
+import Time exposing (Time)
 
 
 -- types
@@ -16,17 +19,25 @@ type alias Flags =
     }
 
 
+type ConfigModal
+    = Main
+
+
 type alias Model =
     { app : App.Model
     , gamepadDatabase : Gamepad.Database
     , gamepadDatabaseKey : String -- This is the key we use for the database in the browser's local storage
     , hasGamepads : Bool
+    , hasKnownGamepads : Bool
     , maybeInputConfig : Maybe Input.Config
+    , maybeModal : Maybe ConfigModal
     }
 
 
 type Msg
     = OnAppMsg App.Msg
+    | OnGamepad ( Time, Gamepad.Blob )
+    | OnKey Int
 
 
 
@@ -49,7 +60,9 @@ init flags =
             , gamepadDatabase = gamepadDatabase
             , gamepadDatabaseKey = flags.gamepadDatabaseKey
             , hasGamepads = False
+            , hasKnownGamepads = False
             , maybeInputConfig = Nothing
+            , maybeModal = Just Main
             }
 
         cmd =
@@ -81,6 +94,39 @@ update msg model =
             in
                 ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
 
+        OnGamepad ( dt, blob ) ->
+            let
+                knownGamepads =
+                    blob
+                        |> Gamepad.getGamepads model.gamepadDatabase
+                        |> List.length
+
+                allGamepads =
+                    blob
+                        |> Gamepad.getAllGamepadsAsUnknown
+                        |> List.length
+            in
+                { model
+                    | hasGamepads = allGamepads > 0
+                    , hasKnownGamepads = knownGamepads > 0
+                }
+                    |> noCmd
+
+        OnKey code ->
+            case code of
+                27 ->
+                    noCmd
+                        { model
+                            | maybeModal =
+                                if model.maybeModal == Nothing then
+                                    Just Main
+                                else
+                                    Nothing
+                        }
+
+                _ ->
+                    noCmd model
+
 
 
 -- view
@@ -90,11 +136,12 @@ viewInputConfig : Html Msg
 viewInputConfig =
     div
         []
-        [ select
+        [ text "Use keyboard?"
+        , select
             []
-            [ option [] [ text "auto" ]
-            , option [] [ text "meh" ]
-            , option [] [ text "lol" ]
+            [ option [] [ text "Guess" ]
+            , option [] [ text "Player 1 uses the keyboard" ]
+            , option [] [ text "Everyone uses only gamepads" ]
             ]
         ]
 
@@ -121,15 +168,18 @@ viewConfig model =
             [ div
                 []
                 [ text "press Esc to to toggle Menu" ]
+            , if model.hasKnownGamepads then
+                div
+                    []
+                    [ viewInputConfig ]
+              else
+                text ""
             , if model.hasGamepads then
                 div
                     []
-                    [ div
+                    [ button
                         []
-                        [ viewInputConfig ]
-                    , div
-                        []
-                        [ text "--> remap pads" ]
+                        [ text "remap pads" ]
                     ]
               else
                 text ""
@@ -143,6 +193,12 @@ view model =
         [ style [ ( "position", "relative" ) ]
         ]
         [ App.view model.app |> Html.map OnAppMsg
+        , case model.maybeModal of
+            Nothing ->
+                text ""
+
+            Just Main ->
+                viewConfig model
         ]
 
 
@@ -152,7 +208,15 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    App.subscriptions model.app |> Sub.map OnAppMsg
+    Sub.batch
+        [ Keyboard.ups OnKey
+        , case model.maybeModal of
+            Nothing ->
+                App.subscriptions model.app |> Sub.map OnAppMsg
+
+            Just Main ->
+                GamepadPort.gamepad OnGamepad
+        ]
 
 
 
