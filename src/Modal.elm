@@ -65,7 +65,10 @@ view model =
                 , ( "border", "1px solid grey" )
                 ]
             ]
-            [ text "modal!" ]
+            [ text "press Esc to to toggle Menu"
+            , text "--> All players use gamepads VS Player 1 uses key+mouse" -- display only if blob > 0
+            , text "--> remap pads" -- display only if blob > 0
+            ]
         ]
 
 

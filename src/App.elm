@@ -58,15 +58,15 @@ init flags =
 
         game =
             Game.init
-                |> Game.addPlayer Player.KeyboardAndMouse
+                |> Game.addPlayer
                 |> Tuple.second
-                |> Game.addPlayer Player.TestKeyboard
+                |> Game.addPlayer
                 |> Tuple.second
     in
         ( { game = game
           , gamepadDatabase = gamepadDatabase
           , gamepadDatabaseKey = flags.gamepadDatabaseKey
-          , maybeModal = Just Modal.initSplash
+          , maybeModal = Nothing --Just Modal.initSplash
           , pressedKeys = []
           , windowSize =
                 { width = 100
@@ -95,7 +95,13 @@ updateAnimationFrame dt blob model =
                 model.game
 
             players =
-                Input.updatePlayersInput model.pressedKeys oldGame.players
+                Input.updatePlayersInput
+                  { config = Input.Player1UsesKeyboardAndMouse
+                  , blob = blob
+                  , gamepadDatabase = model.gamepadDatabase
+                  , pressedKeys = model.pressedKeys
+                  }
+                  oldGame.players
 
             game =
                 { oldGame | players = players }

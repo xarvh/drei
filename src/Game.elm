@@ -3,7 +3,7 @@ module Game exposing (..)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Dict exposing (Dict)
 import Hero exposing (Hero)
-import Player exposing (Player, InputSource)
+import Player exposing (Player)
 import Time exposing (Time)
 
 
@@ -38,14 +38,14 @@ nextId game =
 -- Players
 
 
-addPlayer : InputSource -> Game -> ( Player, Game )
-addPlayer inputSource oldGame =
+addPlayer : Game -> ( Player, Game )
+addPlayer oldGame =
     let
         ( id, game ) =
             nextId oldGame
 
         player =
-            Player.init id inputSource
+            Player.init id
 
         players =
             Dict.insert id player game.players

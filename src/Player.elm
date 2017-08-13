@@ -3,12 +3,6 @@ module Player exposing (..)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 
 
-type InputSource
-    = KeyboardAndMouse
-    | TestKeyboard
-    | Gamepad Int
-
-
 type alias InputState =
     { fire : Bool
     , head : Float
@@ -18,15 +12,13 @@ type alias InputState =
 
 type alias Player =
     { id : Int
-    , inputSource : InputSource
     , inputState : InputState
     }
 
 
-init : Int -> InputSource -> Player
-init id inputSource =
+init : Int -> Player
+init id =
     { id = id
-    , inputSource = inputSource
     , inputState =
         { fire = False
         , head = 0
