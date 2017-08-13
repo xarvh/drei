@@ -5,7 +5,7 @@ import Game exposing (Game)
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (class)
 import Keyboard.Extra exposing (Key)
 import Input
 import List.Extra

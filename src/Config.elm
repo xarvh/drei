@@ -4,7 +4,7 @@ import App
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (class, disabled, style, selected, value)
+import Html.Attributes exposing (class, disabled, selected, value)
 import Html.Events
 import Json.Decode
 import Keyboard
@@ -161,7 +161,7 @@ viewInputConfig : Bool -> Maybe Input.Config -> Html Msg
 viewInputConfig hasKnownGamepads maybeInputConfig =
     div
         []
-        [ text "Use keyboard?"
+        [ div [] [ text "Use keyboard?" ]
         , select
             [ Html.Events.on "change" (Json.Decode.map OnInputConfig Html.Events.targetValue)
             , disabled <| not hasKnownGamepads
@@ -188,38 +188,21 @@ viewInputConfig hasKnownGamepads maybeInputConfig =
 viewConfig : Model -> Html Msg
 viewConfig model =
     div
-        [ style
-            [ ( "position", "absolute" )
-            , ( "top", "0" )
-            , ( "width", "100%" )
-            , ( "height", "100%" )
-            , ( "display", "flex" )
-            , ( "align-items", "center" )
-            , ( "justify-content", "center" )
-            ]
-        ]
+        [ class "configModal-Container" ]
         [ div
-            [ style
-                [ ( "background-color", "white" )
-                , ( "border", "1px solid grey" )
-                ]
-            ]
-            [ br [] []
+            [ class "configModal-Content" ]
+            [ div
+                [ class "configModal-Item" ]
+                [ text "Press Esc to to toggle Menu" ]
             , div
-                []
-                [ text "press Esc to to toggle Menu" ]
-            , br [] []
-            , div
-                []
+                [ class "configModal-Item" ]
                 [ viewInputConfig model.hasKnownGamepads model.maybeInputConfig ]
-            , br [] []
             , div
-                []
+                [ class "configModal-Item" ]
                 [ button
                     [ disabled <| not model.hasGamepads ]
-                    [ text "Remap gamepads" ]
+                    [ text "Remap gamepads (not implemented yet)" ]
                 ]
-            , br [] []
             ]
         ]
 
@@ -227,8 +210,7 @@ viewConfig model =
 view : Model -> Html Msg
 view model =
     div
-        [ style [ ( "position", "relative" ) ]
-        ]
+        [ class "root" ]
         [ App.view model.app |> Html.map OnAppMsg
         , case model.maybeModal of
             Nothing ->
