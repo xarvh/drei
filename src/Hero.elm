@@ -9,6 +9,7 @@ import WebGL exposing (Mesh, Shader)
 
 type alias Hero =
     { id : Int
+    , heading : Float
     , position : Vec2
     , playerId : Int
     }
@@ -26,6 +27,7 @@ type alias MeshVertex =
 
 type alias Uniforms =
     { translation : Mat4
+    , rotation : Mat4
     , perspectiveAndCamera : Mat4
     , duskDawn : Float
     }
@@ -37,17 +39,29 @@ type alias Uniforms =
 
 mesh =
     let
-        a =
-            vec3 -0.4 -0.4 0
+        -- half length
+        l =
+            0.5
 
-        b =
-            vec3 -0.4 0.4 0
+        -- half width
+        w =
+            0.2
 
-        c =
-            vec3 0.4 0.4 0
+        -- tail offset
+        o =
+            0.4
 
-        d =
-            vec3 0.4 -0.4 0
+        nose =
+            vec3 0 l 0
+
+        right =
+            vec3 w -l 0
+
+        tail =
+            vec3 0 -o 0
+
+        left =
+            vec3 -w -l 0
 
         white =
             vec3 1 1 1
@@ -55,8 +69,8 @@ mesh =
         vertex position =
             MeshVertex white position
     in
-        [ ( vertex a, vertex b, vertex c )
-        , ( vertex c, vertex d, vertex a )
+        [ ( vertex nose, vertex right, vertex tail )
+        , ( vertex nose, vertex left, vertex tail )
         ]
             |> WebGL.triangles
 
@@ -74,13 +88,14 @@ vertexShader =
 
         uniform mat4 perspectiveAndCamera;
         uniform mat4 translation;
+        uniform mat4 rotation;
 
         varying vec3 vcolor;
         varying vec2 vcoord;
 
 
         void main () {
-            gl_Position = perspectiveAndCamera * translation * vec4(position, 1.0);
+            gl_Position = perspectiveAndCamera * translation * rotation * vec4(position, 1.0);
             vcolor = color;
             vcoord = (position.xy + vec2(1.0, 1.0)) * 0.5;
         }
@@ -120,6 +135,7 @@ entity perspectiveAndCamera hero =
 
         uniforms =
             { translation = Mat4.makeTranslate (vec3 x y z)
+            , rotation = Mat4.makeRotate hero.heading (vec3 0 0 -1)
             , perspectiveAndCamera = perspectiveAndCamera
             , duskDawn = 0
             }

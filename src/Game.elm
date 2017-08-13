@@ -69,6 +69,7 @@ addHero player oldGame =
 
         hero =
             { id = id
+            , heading = turns 0.1
             , playerId = player.id
             , position = vec2 0 0
             }
