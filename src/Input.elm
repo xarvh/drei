@@ -87,22 +87,20 @@ updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
                 |> List.sortBy Gamepad.getIndex
                 |> List.map gamepadToInputState
 
-        allInputs =
-            keyboardInputs ++ gamepadInputs
+        inputs =
+          keyboardInputs ++ gamepadInputs
 
         fillers =
-            List.repeat (List.length sortedPlayers - List.length allInputs) Nothing
+            List.repeat (List.length sortedPlayers - List.length inputs)
+                { move = vec2 0 0
+                , head = 0
+                , fire = False
+                }
 
-        filledInputs =
-            List.map Just allInputs ++ fillers
-
-        tupleToTuple : ( Player, Maybe InputState ) -> ( Int, Player )
-        tupleToTuple ( player, maybeInputState ) =
-            maybeInputState
-                |> Maybe.map (\inputState -> { player | inputState = inputState })
-                |> Maybe.withDefault player
-                |> (\player -> ( player.id, player ))
+        tupleToTuple : ( Player, InputState ) -> ( Int, Player )
+        tupleToTuple ( player, inputState ) =
+            ( player.id, { player | inputState = inputState } )
     in
-        List.map2 (,) sortedPlayers filledInputs
+        List.map2 (,) sortedPlayers (inputs ++ fillers)
             |> List.map tupleToTuple
             |> Dict.fromList
