@@ -4,7 +4,9 @@ import App
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (style, value, selected)
+import Html.Events
+import Json.Decode
 import Keyboard
 import Input
 import Time exposing (Time)
@@ -38,6 +40,7 @@ type Msg
     = OnAppMsg App.Msg
     | OnGamepad ( Time, Gamepad.Blob )
     | OnKey Int
+    | OnInputConfig String
 
 
 
@@ -132,21 +135,48 @@ update msg model =
                 _ ->
                     noCmd model
 
+        OnInputConfig value ->
+            noCmd
+                { model
+                    | maybeInputConfig =
+                        case value of
+                            "key" ->
+                                Just Input.Player1UsesKeyboardAndMouse
+
+                            "pad" ->
+                                Just Input.AllPlayersUseGamepads
+
+                            _ ->
+                                Nothing
+                }
+
 
 
 -- view
 
 
-viewInputConfig : Html Msg
-viewInputConfig =
+viewInputConfig : Maybe Input.Config -> Html Msg
+viewInputConfig maybeInputConfig =
     div
         []
         [ text "Use keyboard?"
         , select
-            []
-            [ option [] [ text "Guess" ]
-            , option [] [ text "Player 1 uses the keyboard" ]
-            , option [] [ text "Everyone uses only gamepads" ]
+            [ Html.Events.on "change" (Json.Decode.map OnInputConfig Html.Events.targetValue) ]
+            [ option
+                [ value ""
+                , selected <| maybeInputConfig == Nothing
+                ]
+                [ text "Guess" ]
+            , option
+                [ value "key"
+                , selected <| maybeInputConfig == Just Input.Player1UsesKeyboardAndMouse
+                ]
+                [ text "Player 1 uses the keyboard" ]
+            , option
+                [ value "pad"
+                , selected <| maybeInputConfig == Just Input.AllPlayersUseGamepads
+                ]
+                [ text "Everyone uses only gamepads" ]
             ]
         ]
 
@@ -170,15 +200,18 @@ viewConfig model =
                 , ( "border", "1px solid grey" )
                 ]
             ]
-            [ div
+            [ br [] []
+            , div
                 []
                 [ text "press Esc to to toggle Menu" ]
+            , br [] []
             , if model.hasKnownGamepads then
                 div
                     []
-                    [ viewInputConfig ]
+                    [ viewInputConfig model.maybeInputConfig ]
               else
                 text ""
+            , br [] []
             , if model.hasGamepads then
                 div
                     []
@@ -188,6 +221,7 @@ viewConfig model =
                     ]
               else
                 text ""
+            , br [] []
             ]
         ]
 
