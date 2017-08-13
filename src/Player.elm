@@ -5,6 +5,7 @@ import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 
 type InputSource
     = KeyboardAndMouse
+    | TestKeyboard
     | Gamepad Int
 
 

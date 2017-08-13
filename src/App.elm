@@ -49,6 +49,8 @@ init flags =
             Game.init
                 |> Game.addPlayer Player.KeyboardAndMouse
                 |> Tuple.second
+                |> Game.addPlayer Player.TestKeyboard
+                |> Tuple.second
     in
         ( { game = game
           , gamepadDatabase = gamepadDatabase

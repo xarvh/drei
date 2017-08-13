@@ -2,7 +2,7 @@ module Input exposing (..)
 
 import Dict exposing (Dict)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
-import Keyboard.Extra as Key exposing (Key)
+import Keyboard.Extra exposing (Key)
 import Player exposing (Player)
 
 
@@ -13,26 +13,29 @@ input pressedKeys id player =
             -- TODO
             player
 
-        Player.KeyboardAndMouse ->
+        Player.TestKeyboard ->
             let
-                x =
-                    if List.member Key.CharA pressedKeys then
-                        -1
-                    else if List.member Key.CharD pressedKeys then
-                        1
-                    else
-                        0
-
-                y =
-                    if List.member Key.CharS pressedKeys then
-                        -1
-                    else if List.member Key.CharW pressedKeys then
-                        1
-                    else
-                        0
+                { x, y } =
+                    Keyboard.Extra.arrows pressedKeys
 
                 move =
-                    vec2 x y
+                    vec2 (toFloat x) (toFloat y)
+
+                is =
+                    player.inputState
+
+                inputState =
+                    { is | move = move }
+            in
+                { player | inputState = inputState }
+
+        Player.KeyboardAndMouse ->
+            let
+                { x, y } =
+                    Keyboard.Extra.wasd pressedKeys
+
+                move =
+                    vec2 (toFloat x) (toFloat y)
 
                 is =
                     player.inputState
