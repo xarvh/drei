@@ -1,6 +1,6 @@
 #!/bin/sh
 
-ADD=index.html
+ADD=build/app.js
 BUILD="make"
 
 
