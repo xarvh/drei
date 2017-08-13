@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Drei</title>
+    <style>
+      html,head,body { padding:0; margin:0; }
+      body { font-family: calibri, helvetica, arial, sans-serif; }
+    </style>
+
+    <script type="text/javascript" src="/_compile/Main.elm"></script>
+    <script type="text/javascript" src="static/gamepadPort.js"></script>
+    <script type="text/javascript" src="static/localStoragePort.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+      // A single source of truth for the local storage key avoids frustrating bugs
+      var gamepadDatabaseKey = "gamepadDatabase";
+      // We pass gamepadDatabaseKey and gamepadDatabaseAsString as flags to Elm
+      var elmApp = Elm.Main.fullscreen({
+        gamepadDatabaseKey: gamepadDatabaseKey,
+        gamepadDatabaseAsString: localStorage[gamepadDatabaseKey] || "",
+      });
+      addGamepadPort(elmApp);
+      addLocalStoragePort(elmApp);
+    </script>
+  </body>
+</html>
