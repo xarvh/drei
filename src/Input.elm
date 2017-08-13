@@ -55,7 +55,7 @@ updatePlayersInput :
     , pressedKeys : List Key
     }
     -> Dict Int Player
-    -> Dict Int Player
+    -> ( Int, Dict Int Player )
 updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
     let
         config =
@@ -88,10 +88,13 @@ updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
                 |> List.map gamepadToInputState
 
         inputs =
-          keyboardInputs ++ gamepadInputs
+            keyboardInputs ++ gamepadInputs
+
+        playersMinusInputs =
+            List.length sortedPlayers - List.length inputs
 
         fillers =
-            List.repeat (List.length sortedPlayers - List.length inputs)
+            List.repeat playersMinusInputs
                 { move = vec2 0 0
                 , head = 0
                 , fire = False
@@ -104,3 +107,4 @@ updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
         List.map2 (,) sortedPlayers (inputs ++ fillers)
             |> List.map tupleToTuple
             |> Dict.fromList
+            |> (,) playersMinusInputs

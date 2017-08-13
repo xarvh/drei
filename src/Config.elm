@@ -4,7 +4,7 @@ import App
 import Gamepad
 import GamepadPort
 import Html exposing (..)
-import Html.Attributes exposing (style, value, selected)
+import Html.Attributes exposing (style, value, selected, disabled)
 import Html.Events
 import Json.Decode
 import Keyboard
@@ -155,13 +155,15 @@ update msg model =
 -- view
 
 
-viewInputConfig : Maybe Input.Config -> Html Msg
-viewInputConfig maybeInputConfig =
+viewInputConfig : Bool -> Maybe Input.Config -> Html Msg
+viewInputConfig hasKnownGamepads maybeInputConfig =
     div
         []
         [ text "Use keyboard?"
         , select
-            [ Html.Events.on "change" (Json.Decode.map OnInputConfig Html.Events.targetValue) ]
+            [ Html.Events.on "change" (Json.Decode.map OnInputConfig Html.Events.targetValue)
+            , disabled <| not hasKnownGamepads
+            ]
             [ option
                 [ value ""
                 , selected <| maybeInputConfig == Nothing
@@ -205,22 +207,16 @@ viewConfig model =
                 []
                 [ text "press Esc to to toggle Menu" ]
             , br [] []
-            , if model.hasKnownGamepads then
-                div
-                    []
-                    [ viewInputConfig model.maybeInputConfig ]
-              else
-                text ""
+            , div
+                []
+                [ viewInputConfig model.hasKnownGamepads model.maybeInputConfig ]
             , br [] []
-            , if model.hasGamepads then
-                div
-                    []
-                    [ button
-                        []
-                        [ text "remap pads" ]
-                    ]
-              else
-                text ""
+            , div
+                []
+                [ button
+                    [ disabled <| not model.hasGamepads ]
+                    [ text "Remap gamepads" ]
+                ]
             , br [] []
             ]
         ]

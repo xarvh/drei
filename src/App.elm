@@ -46,12 +46,8 @@ type Msg
 init : ( Model, Cmd Msg )
 init =
     let
-        game =
-            Game.init
-                |> Game.addPlayer
-                |> Tuple.second
-                |> Game.addPlayer
-                |> Tuple.second
+        ( player, game ) =
+            Game.init |> Game.addPlayer
     in
         ( { game = game
           , pressedKeys = []
@@ -78,7 +74,7 @@ updateAnimationFrame config dt blob model =
         oldGame =
             model.game
 
-        players =
+        ( playersMinusInputs, players ) =
             Input.updatePlayersInput
                 { gamepads = Gamepad.getGamepads config.gamepadDatabase blob
                 , maybeConfig = config.maybeInputConfig
@@ -86,8 +82,15 @@ updateAnimationFrame config dt blob model =
                 }
                 oldGame.players
 
+        addNewPlayer =
+            -- if there are more inputs than players
+            if playersMinusInputs < 0 then
+                Game.addPlayer >> Tuple.second
+            else
+                identity
+
         game =
-            { oldGame | players = players }
+            { oldGame | players = players } |> addNewPlayer
     in
         noCmd { model | game = Game.think dt game }
 
