@@ -80,24 +80,20 @@ addHero player oldGame =
 
 
 
-{-
-   addHero : Player -> Game -> ( Hero, Game )
-   addHero player game =
-       let
-           maybeHero =
-               game.heroes
-                   |> Dict.values
-                   |> List.filter (\h -> h.playerId == player.id)
-                   |> List.head
-       in
-           case maybeHero of
-               Just hero ->
-                   ( hero, game )
-
-               Nothing ->
-                   addHeroWithoutChecking player game
--}
 -- Think
+
+
+heroToPlayer : Game -> Hero -> Maybe Player
+heroToPlayer game hero =
+    Dict.get hero.playerId game.players
+
+
+playerToHero : Game -> Player -> Maybe Hero
+playerToHero game player =
+    game.heroes
+        |> Dict.values
+        |> List.filter (\h -> h.playerId == player.id)
+        |> List.head
 
 
 {-| meters per second
@@ -108,7 +104,7 @@ maxHeroSpeed =
 
 thinkHero : Game -> Time -> Int -> Hero -> Hero
 thinkHero game dt id hero =
-    case Dict.get hero.playerId game.players of
+    case heroToPlayer game hero of
         Nothing ->
             hero
 

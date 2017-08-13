@@ -1,5 +1,6 @@
 module App exposing (programWithFlags)
 
+import Dict
 import Game exposing (Game)
 import Gamepad
 import GamepadPort
@@ -90,18 +91,24 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div
-        [ HA.style
-            [ ( "display", "flex" )
-            , ( "justify-content", "center" )
+    let
+        maybeViewer =
+            model.game.players
+                |> Dict.values
+                |> List.head
+    in
+        div
+            [ HA.style
+                [ ( "display", "flex" )
+                , ( "justify-content", "center" )
+                ]
             ]
-        ]
-        [ WebGL.toHtml
-            [ HA.width model.windowSize.width
-            , HA.height model.windowSize.height
+            [ WebGL.toHtml
+                [ HA.width model.windowSize.width
+                , HA.height model.windowSize.height
+                ]
+                (Scene.entities maybeViewer model.windowSize model.game)
             ]
-            (Scene.entities model.windowSize model.game)
-        ]
 
 
 subscriptions : Model -> Sub Msg
