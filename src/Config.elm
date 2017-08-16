@@ -8,6 +8,7 @@ import Html.Attributes exposing (class, disabled, selected, value)
 import Html.Events
 import Json.Decode
 import Keyboard
+import MousePort
 import Input
 import Time exposing (Time)
 
@@ -125,14 +126,10 @@ update msg model =
         OnKey code ->
             case code of
                 27 ->
-                    noCmd
-                        { model
-                            | maybeModal =
-                                if model.maybeModal == Nothing then
-                                    Just Main
-                                else
-                                    Nothing
-                        }
+                    if model.maybeModal == Nothing then
+                        ( { model | maybeModal = Just Main }, Cmd.none )
+                    else
+                        ( { model | maybeModal = Nothing }, MousePort.lock )
 
                 _ ->
                     noCmd model

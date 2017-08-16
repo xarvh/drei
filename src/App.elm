@@ -6,10 +6,12 @@ import Gamepad
 import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (class)
+import Html.Events
 import Keyboard.Extra exposing (Key)
 import Input
 import List.Extra
 import LocalStoragePort
+import MousePort
 import Player exposing (Player)
 import Task
 import Time exposing (Time)
@@ -36,6 +38,7 @@ type alias Model =
 
 type Msg
     = OnAnimationFrame ( Time, Gamepad.Blob ) -- This one is called directly by Config
+    | OnClick
     | OnInputMsg Input.Msg
     | OnWindowResizes Window.Size
 
@@ -49,7 +52,7 @@ init =
     let
         game =
             Game.init
-                |> Game.addPlayer >> Tuple.second
+                |> (Game.addPlayer >> Tuple.second)
     in
         ( { game = game
           , input = Input.init
@@ -106,6 +109,9 @@ update config msg model =
     case msg of
         OnAnimationFrame ( dt, blob ) ->
             updateAnimationFrame config dt blob model
+
+        OnClick ->
+            ( model, MousePort.lock )
 
         OnInputMsg msg ->
             { model | input = Input.update msg model.input } |> noCmd
@@ -169,7 +175,10 @@ view model =
             |> List.map viewPlayer
             |> List.Extra.groupsOf columns
             |> List.map (div [ class "playerViewport-Row" ])
-            |> div [ class "playerViewport-Rows" ]
+            |> div
+                [ class "playerViewport-Rows"
+                , Html.Events.onClick OnClick
+                ]
 
 
 

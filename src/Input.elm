@@ -3,7 +3,7 @@ module Input exposing (..)
 import Dict exposing (Dict)
 import Gamepad exposing (Gamepad)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
-import Mouse
+import MousePort
 import Keyboard.Extra exposing (Key)
 import Player exposing (Player, InputState)
 
@@ -18,14 +18,15 @@ type Config
 
 type Msg
     = OnKeyboardMsg Keyboard.Extra.Msg
-    | OnMouseButton Bool Mouse.Position
-    | OnMouseMove Mouse.Position
+    | OnMouseButton ( Int, Bool )
+    | OnMouseMove ( Int, Int )
 
 
 type alias Model =
-    { mousePositionBefore : Vec2
-    , mousePositionNow : Vec2
-    , mouseLeftButton : Bool
+    { mouseDelta : Vec2
+    , mouseButtonLeft : Bool
+    , mouseButtonMiddle : Bool
+    , mouseButtonRight : Bool
     , pressedKeys : List Key
     }
 
@@ -41,9 +42,10 @@ v0 =
 
 init : Model
 init =
-    { mousePositionBefore = vec2 0 0
-    , mousePositionNow = vec2 0 0
-    , mouseLeftButton = False
+    { mouseDelta = vec2 0 0
+    , mouseButtonLeft = False
+    , mouseButtonMiddle = False
+    , mouseButtonRight = False
     , pressedKeys = []
     }
 
@@ -59,8 +61,7 @@ keyboardAndMouseToInputState model =
             0.01
 
         dAim =
-            Vec2.sub model.mousePositionNow model.mousePositionBefore
-                |> Vec2.scale mouseNormalisation
+            Vec2.scale mouseNormalisation model.mouseDelta
 
         { x, y } =
             Keyboard.Extra.wasd model.pressedKeys
@@ -69,7 +70,7 @@ keyboardAndMouseToInputState model =
             vec2 (toFloat x) (toFloat y)
     in
         { dAim = dAim
-        , fire = model.mouseLeftButton
+        , fire = model.mouseButtonLeft
         , move = move
         }
 
@@ -91,12 +92,10 @@ gamepadToInputState gamepad =
 
 applyInputState : InputState -> Player -> Player
 applyInputState inputState player =
-    let
-        -- TODO: should use dt?
-        aim =
-            Vec2.add player.aim inputState.dAim
-    in
-        { player | inputState = inputState, aim = aim }
+    { player
+        | inputState = inputState
+        , aim = Vec2.add player.aim inputState.dAim
+    }
 
 
 updatePlayersInput :
@@ -157,7 +156,7 @@ updatePlayersInput { maybeConfig, gamepads } model players =
         List.map2 (,) sortedPlayers (inputs ++ fillers)
             |> List.map tupleToTuple
             |> Dict.fromList
-            |> (,,) playersMinusInputs { model | mousePositionBefore = model.mousePositionNow }
+            |> (,,) playersMinusInputs { model | mouseDelta = v0 }
 
 
 
@@ -170,11 +169,19 @@ update msg model =
         OnKeyboardMsg keyboardMsg ->
             { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
 
-        OnMouseButton toggle position ->
-            { model | mouseLeftButton = toggle }
+        OnMouseButton ( button, toggle ) ->
+            case button of
+                0 ->
+                    { model | mouseButtonLeft = toggle }
 
-        OnMouseMove { x, y } ->
-            { model | mousePositionNow = vec2 (toFloat x) (toFloat y) }
+                1 ->
+                    { model | mouseButtonMiddle = toggle }
+
+                _ ->
+                    { model | mouseButtonRight = toggle }
+
+        OnMouseMove ( dx, dy ) ->
+            { model | mouseDelta = Vec2.add model.mouseDelta (vec2 (toFloat dx) (toFloat dy)) }
 
 
 
@@ -185,7 +192,6 @@ subscriptions model =
     -- TODO disable the subscriptions if key&mouse are not used
     Sub.batch
         [ Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
-        , Mouse.moves OnMouseMove
-        , Mouse.downs (OnMouseButton True)
-        , Mouse.ups (OnMouseButton False)
+        , MousePort.movement OnMouseMove
+        , MousePort.button OnMouseButton
         ]
