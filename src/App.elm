@@ -29,14 +29,14 @@ type alias Config =
 
 type alias Model =
     { game : Game
-    , pressedKeys : List Key
+    , input : Input.Model
     , windowSize : Window.Size
     }
 
 
 type Msg
     = OnAnimationFrame ( Time, Gamepad.Blob ) -- This one is called directly by Config
-    | OnKeyboardMsg Keyboard.Extra.Msg
+    | OnInputMsg Input.Msg
     | OnWindowResizes Window.Size
 
 
@@ -49,13 +49,10 @@ init =
     let
         game =
             Game.init
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
+                |> Game.addPlayer >> Tuple.second
     in
         ( { game = game
-          , pressedKeys = []
+          , input = Input.init
           , windowSize =
                 { width = 100
                 , height = 100
@@ -79,12 +76,12 @@ updateAnimationFrame config dt blob model =
         oldGame =
             model.game
 
-        ( playersMinusInputs, players ) =
+        ( playersMinusInputs, inputModel, players ) =
             Input.updatePlayersInput
                 { gamepads = Gamepad.getGamepads config.gamepadDatabase blob
                 , maybeConfig = config.maybeInputConfig
-                , pressedKeys = model.pressedKeys
                 }
+                model.input
                 oldGame.players
 
         addNewPlayer =
@@ -97,7 +94,11 @@ updateAnimationFrame config dt blob model =
         game =
             { oldGame | players = players } |> addNewPlayer
     in
-        noCmd { model | game = Game.think dt game }
+        noCmd
+            { model
+                | game = Game.think dt game
+                , input = inputModel
+            }
 
 
 update : Config -> Msg -> Model -> ( Model, Cmd Msg )
@@ -106,8 +107,8 @@ update config msg model =
         OnAnimationFrame ( dt, blob ) ->
             updateAnimationFrame config dt blob model
 
-        OnKeyboardMsg keyboardMsg ->
-            noCmd { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
+        OnInputMsg msg ->
+            { model | input = Input.update msg model.input } |> noCmd
 
         OnWindowResizes size ->
             noCmd { model | windowSize = size }
@@ -179,5 +180,5 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Window.resizes OnWindowResizes
-        , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
+        , Input.subscriptions model.input |> Sub.map OnInputMsg
         ]

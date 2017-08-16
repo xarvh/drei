@@ -21,17 +21,21 @@ perspective viewportWidth viewportHeight =
         Mat4.makePerspective 45 ratio 0.01 100
 
 
-camera : Vec2 -> Mat4
-camera cameraTarget =
+camera : Vec2 -> Vec2 -> Mat4
+camera direction target =
     let
         ( x, y ) =
-            Vec2.toTuple cameraTarget
+            Vec2.toTuple target
 
         targetPosition =
             vec3 x y 0
 
+        cameraOffset =
+            vec3 0 0 3
+                |> Mat4.transform (Mat4.makeRotate (Vec2.getY direction) (vec3 1 0 0))
+
         cameraPosition =
-            vec3 x (y - 3) 3
+            Vec3.add targetPosition cameraOffset
 
         upDirection =
             vec3 0 1 0
@@ -42,6 +46,11 @@ camera cameraTarget =
 entities : Maybe Player -> { width : Int, height : Int } -> Game -> List WebGL.Entity
 entities maybeViewer viewport game =
     let
+        cameraDirection =
+            maybeViewer
+                |> Maybe.map .aim
+                |> Maybe.withDefault (vec2 0 0)
+
         cameraTarget =
             maybeViewer
                 |> Maybe.andThen (Game.playerToHero game)
@@ -52,7 +61,7 @@ entities maybeViewer viewport game =
             perspective viewport.width viewport.height
 
         c =
-            camera cameraTarget
+            camera cameraDirection cameraTarget
 
         perspectiveAndcamera =
             Mat4.mul p c

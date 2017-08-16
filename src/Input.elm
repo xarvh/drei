@@ -3,6 +3,7 @@ module Input exposing (..)
 import Dict exposing (Dict)
 import Gamepad exposing (Gamepad)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
+import Mouse
 import Keyboard.Extra exposing (Key)
 import Player exposing (Player, InputState)
 
@@ -15,33 +16,72 @@ type Config
     | Player1UsesKeyboardAndMouse
 
 
+type Msg
+    = OnKeyboardMsg Keyboard.Extra.Msg
+    | OnMouseButton Bool Mouse.Position
+    | OnMouseMove Mouse.Position
+
+
+type alias Model =
+    { mousePositionBefore : Vec2
+    , mousePositionNow : Vec2
+    , mouseLeftButton : Bool
+    , pressedKeys : List Key
+    }
+
+
+
+-- init
+
+
+v0 : Vec2
+v0 =
+    vec2 0 0
+
+
+init : Model
+init =
+    { mousePositionBefore = vec2 0 0
+    , mousePositionNow = vec2 0 0
+    , mouseLeftButton = False
+    , pressedKeys = []
+    }
+
+
 
 -- input to player input state
 
 
-keyboardToInputState : List Key -> Player.InputState
-keyboardToInputState pressedKeys =
+keyboardAndMouseToInputState : Model -> Player.InputState
+keyboardAndMouseToInputState model =
     let
+        mouseNormalisation =
+            0.01
+
+        dAim =
+            Vec2.sub model.mousePositionNow model.mousePositionBefore
+                |> Vec2.scale mouseNormalisation
+
         { x, y } =
-            Keyboard.Extra.wasd pressedKeys
+            Keyboard.Extra.wasd model.pressedKeys
 
         move =
             vec2 (toFloat x) (toFloat y)
     in
-        { move = move
-        , head = 0
-        , fire = False
+        { dAim = dAim
+        , fire = model.mouseLeftButton
+        , move = move
         }
 
 
 gamepadToInputState : Gamepad -> Player.InputState
 gamepadToInputState gamepad =
-    { move =
-        vec2 (Gamepad.leftX gamepad) (Gamepad.leftY gamepad)
+    { dAim =
+        vec2 (Gamepad.rightY gamepad) (Gamepad.rightX gamepad)
     , fire =
         Gamepad.aIsPressed gamepad
-    , head =
-        atan2 (Gamepad.rightY gamepad) (Gamepad.rightX gamepad)
+    , move =
+        vec2 (Gamepad.leftX gamepad) (Gamepad.leftY gamepad)
     }
 
 
@@ -49,14 +89,24 @@ gamepadToInputState gamepad =
 -- input assignment
 
 
+applyInputState : InputState -> Player -> Player
+applyInputState inputState player =
+    let
+        -- TODO: should use dt?
+        aim =
+            Vec2.add player.aim inputState.dAim
+    in
+        { player | inputState = inputState, aim = aim }
+
+
 updatePlayersInput :
     { gamepads : List Gamepad
     , maybeConfig : Maybe Config
-    , pressedKeys : List Key
     }
+    -> Model
     -> Dict Int Player
-    -> ( Int, Dict Int Player )
-updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
+    -> ( Int, Model, Dict Int Player )
+updatePlayersInput { maybeConfig, gamepads } model players =
     let
         config =
             case maybeConfig of
@@ -80,7 +130,7 @@ updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
                     []
 
                 Player1UsesKeyboardAndMouse ->
-                    [ keyboardToInputState pressedKeys ]
+                    [ keyboardAndMouseToInputState model ]
 
         gamepadInputs =
             gamepads
@@ -95,16 +145,47 @@ updatePlayersInput { maybeConfig, gamepads, pressedKeys } players =
 
         fillers =
             List.repeat playersMinusInputs
-                { move = vec2 0 0
-                , head = 0
+                { dAim = vec2 0 0
+                , move = vec2 0 0
                 , fire = False
                 }
 
         tupleToTuple : ( Player, InputState ) -> ( Int, Player )
         tupleToTuple ( player, inputState ) =
-            ( player.id, { player | inputState = inputState } )
+            ( player.id, applyInputState inputState player )
     in
         List.map2 (,) sortedPlayers (inputs ++ fillers)
             |> List.map tupleToTuple
             |> Dict.fromList
-            |> (,) playersMinusInputs
+            |> (,,) playersMinusInputs { model | mousePositionBefore = model.mousePositionNow }
+
+
+
+-- update
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        OnKeyboardMsg keyboardMsg ->
+            { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
+
+        OnMouseButton toggle position ->
+            { model | mouseLeftButton = toggle }
+
+        OnMouseMove { x, y } ->
+            { model | mousePositionNow = vec2 (toFloat x) (toFloat y) }
+
+
+
+-- subscriptions
+
+
+subscriptions model =
+    -- TODO disable the subscriptions if key&mouse are not used
+    Sub.batch
+        [ Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
+        , Mouse.moves OnMouseMove
+        , Mouse.downs (OnMouseButton True)
+        , Mouse.ups (OnMouseButton False)
+        ]
