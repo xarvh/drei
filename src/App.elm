@@ -84,6 +84,7 @@ updateAnimationFrame config dt blob model =
                 { gamepads = Gamepad.getGamepads config.gamepadDatabase blob
                 , maybeConfig = config.maybeInputConfig
                 }
+                dt
                 model.input
                 oldGame.players
 

@@ -6,6 +6,7 @@ import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import MousePort
 import Keyboard.Extra exposing (Key)
 import Player exposing (Player, InputState)
+import Time exposing (Time)
 
 
 -- types
@@ -57,11 +58,14 @@ init =
 keyboardAndMouseToInputState : Model -> Player.InputState
 keyboardAndMouseToInputState model =
     let
-        mouseNormalisation =
-            0.01
+        pixelsForAFullTurn =
+            1000
+
+        turningRatio =
+            turns 1 / pixelsForAFullTurn
 
         dAim =
-            Vec2.scale mouseNormalisation model.mouseDelta
+            Vec2.scale turningRatio model.mouseDelta
 
         { x, y } =
             Keyboard.Extra.wasd model.pressedKeys
@@ -75,15 +79,34 @@ keyboardAndMouseToInputState model =
         }
 
 
-gamepadToInputState : Gamepad -> Player.InputState
-gamepadToInputState gamepad =
-    { dAim =
-        vec2 (Gamepad.rightY gamepad) (Gamepad.rightX gamepad)
-    , fire =
-        Gamepad.aIsPressed gamepad
-    , move =
-        vec2 (Gamepad.leftX gamepad) (Gamepad.leftY gamepad)
-    }
+gamepadToInputState : Time -> Gamepad -> Player.InputState
+gamepadToInputState dt gamepad =
+    let
+        -- Mouse movement directly represents a delta movement.
+        -- Unlike mouse movement, the gamepad's stick represents a *speed*
+        -- so it must be multiplied by the frame refresh interval.
+        timeForAFullTurn =
+            1000 * Time.millisecond
+
+        maxTurningSpeed =
+            turns 1 / timeForAFullTurn
+
+        maxDeltaAim =
+            dt * maxTurningSpeed
+
+        dAim =
+            vec2 (Gamepad.rightY gamepad) (Gamepad.rightX gamepad) |> Vec2.scale maxTurningSpeed
+
+        fire =
+            Gamepad.aIsPressed gamepad
+
+        move =
+            vec2 (Gamepad.leftX gamepad) (Gamepad.leftY gamepad)
+    in
+        { dAim = dAim
+        , fire = fire
+        , move = move
+        }
 
 
 
@@ -92,20 +115,41 @@ gamepadToInputState gamepad =
 
 applyInputState : InputState -> Player -> Player
 applyInputState inputState player =
-    { player
-        | inputState = inputState
-        , aim = Vec2.add player.aim inputState.dAim
-    }
+    let
+        -- Unlike movement and fire, aiming is not constrained by game refresh
+        -- ticks, but only by frame display time.
+        -- Because of this, aiming direction should be updated as part of the input,
+        -- not as part of the game.
+        (unclampedTraverse, unclampedElevation) =
+           Vec2.add player.aim inputState.dAim |> Vec2.toTuple
+
+        -- rotation in the vertical plane
+        elevation =
+          clamp -(turns 0.25) (turns 0.25) unclampedElevation
+
+
+        -- rotation in the horizontal plane
+        traverse =
+          unclampedTraverse
+
+
+        -- mouse represents a *movement* <--- this doesn't care about dt
+    in
+        { player
+            | inputState = inputState
+            , aim = vec2 traverse elevation
+        }
 
 
 updatePlayersInput :
     { gamepads : List Gamepad
     , maybeConfig : Maybe Config
     }
+    -> Time
     -> Model
     -> Dict Int Player
     -> ( Int, Model, Dict Int Player )
-updatePlayersInput { maybeConfig, gamepads } model players =
+updatePlayersInput { maybeConfig, gamepads } dt model players =
     let
         config =
             case maybeConfig of
@@ -134,7 +178,7 @@ updatePlayersInput { maybeConfig, gamepads } model players =
         gamepadInputs =
             gamepads
                 |> List.sortBy Gamepad.getIndex
-                |> List.map gamepadToInputState
+                |> List.map (gamepadToInputState dt)
 
         inputs =
             keyboardInputs ++ gamepadInputs
