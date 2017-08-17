@@ -4,6 +4,8 @@ import Color exposing (Color)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
+import Math.Vector4 as Vec4 exposing (Vec4, vec4)
+import Meshes
 import WebGL exposing (Mesh, Shader)
 
 
@@ -19,103 +21,46 @@ type alias Hero =
 -- types
 
 
-type alias MeshVertex =
-    { color : Vec3
-    , position : Vec3
-    }
-
-
 type alias Uniforms =
-    { translation : Mat4
-    , rotation : Mat4
-    , perspectiveAndCamera : Mat4
-    , duskDawn : Float
+    { transform : Mat4
     }
-
-
-
--- mesh
-
-
-mesh =
-    let
-        -- half length
-        l =
-            0.5
-
-        -- half width
-        w =
-            0.2
-
-        -- tail offset
-        o =
-            0.4
-
-        nose =
-            vec3 0 l 0
-
-        right =
-            vec3 w -l 0
-
-        tail =
-            vec3 0 -o 0
-
-        left =
-            vec3 -w -l 0
-
-        white =
-            vec3 1 1 1
-
-        vertex position =
-            MeshVertex white position
-    in
-        [ ( vertex nose, vertex right, vertex tail )
-        , ( vertex nose, vertex left, vertex tail )
-        ]
-            |> WebGL.triangles
 
 
 
 -- shaders
 
 
-vertexShader : Shader MeshVertex Uniforms { vcolor : Vec3, vcoord : Vec2 }
+vertexShader : Shader Meshes.PlainVertex Uniforms { vCameraCoord : Vec4 }
 vertexShader =
     [glsl|
+        precision mediump float;
 
         attribute vec3 position;
-        attribute vec3 color;
 
-        uniform mat4 perspectiveAndCamera;
-        uniform mat4 translation;
-        uniform mat4 rotation;
+        uniform mat4 transform;
 
-        varying vec3 vcolor;
-        varying vec2 vcoord;
-
+        varying vec4 vCameraCoord;
 
         void main () {
-            gl_Position = perspectiveAndCamera * translation * rotation * vec4(position, 1.0);
-            vcolor = color;
-            vcoord = (position.xy + vec2(1.0, 1.0)) * 0.5;
+            vCameraCoord = transform * vec4(position, 1.0);
+            gl_Position = vCameraCoord;
         }
-
     |]
 
 
-fragmentShader : Shader {} Uniforms { vcolor : Vec3, vcoord : Vec2 }
+fragmentShader : Shader {} Uniforms { vCameraCoord : Vec4 }
 fragmentShader =
     [glsl|
-
         precision mediump float;
 
-        uniform float duskDawn;
+        varying vec4 vCameraCoord;
 
-        varying vec3 vcolor;
-        varying vec2 vcoord;
+        vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
+        vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
 
         void main() {
-            gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+            float fogFactor = gl_FragCoord.z / gl_FragCoord.w;
+            gl_FragColor = mix(fogColor, heroColor, fogFactor);
         }
     |]
 
@@ -133,11 +78,20 @@ entity perspectiveAndCamera hero =
         z =
             0.1
 
+        translation =
+            Mat4.makeTranslate (vec3 x y z)
+
+        rotation =
+            Mat4.makeRotate hero.heading (vec3 0 0 -1)
+
+        transform =
+            Mat4.identity
+                |> Mat4.mul rotation
+                |> Mat4.mul translation
+                |> Mat4.mul perspectiveAndCamera
+
         uniforms =
-            { translation = Mat4.makeTranslate (vec3 x y z)
-            , rotation = Mat4.makeRotate hero.heading (vec3 0 0 -1)
-            , perspectiveAndCamera = perspectiveAndCamera
-            , duskDawn = 0
+            { transform = transform
             }
     in
-        WebGL.entity vertexShader fragmentShader mesh uniforms
+        WebGL.entity vertexShader fragmentShader Meshes.cube uniforms
