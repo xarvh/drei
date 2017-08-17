@@ -86,7 +86,7 @@ gamepadToInputState dt gamepad =
         -- Unlike mouse movement, the gamepad's stick represents a *speed*
         -- so it must be multiplied by the frame refresh interval.
         timeForAFullTurn =
-            1000 * Time.millisecond
+            2000 * Time.millisecond
 
         maxTurningSpeed =
             turns 1 / timeForAFullTurn
@@ -95,7 +95,7 @@ gamepadToInputState dt gamepad =
             dt * maxTurningSpeed
 
         dAim =
-            vec2 (Gamepad.rightY gamepad) (Gamepad.rightX gamepad) |> Vec2.scale maxTurningSpeed
+            vec2 (Gamepad.rightX gamepad) -(Gamepad.rightY gamepad) |> Vec2.scale maxDeltaAim
 
         fire =
             Gamepad.aIsPressed gamepad
@@ -120,18 +120,17 @@ applyInputState inputState player =
         -- ticks, but only by frame display time.
         -- Because of this, aiming direction should be updated as part of the input,
         -- not as part of the game.
-        (unclampedTraverse, unclampedElevation) =
-           Vec2.add player.aim inputState.dAim |> Vec2.toTuple
+        ( unclampedTraverse, unclampedElevation ) =
+            Vec2.add player.aim inputState.dAim |> Vec2.toTuple
 
         -- rotation in the vertical plane
+        -- TODO: use "invert Y axis" config
         elevation =
-          clamp -(turns 0.25) (turns 0.25) unclampedElevation
-
+            clamp -(turns 0.25) (turns 0.25) unclampedElevation
 
         -- rotation in the horizontal plane
         traverse =
-          unclampedTraverse
-
+            unclampedTraverse
 
         -- mouse represents a *movement* <--- this doesn't care about dt
     in
