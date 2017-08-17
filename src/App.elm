@@ -6,10 +6,12 @@ import Gamepad
 import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (class)
+import Html.Events
 import Keyboard.Extra exposing (Key)
 import Input
 import List.Extra
 import LocalStoragePort
+import MousePort
 import Player exposing (Player)
 import Task
 import Time exposing (Time)
@@ -29,14 +31,15 @@ type alias Config =
 
 type alias Model =
     { game : Game
-    , pressedKeys : List Key
+    , input : Input.Model
     , windowSize : Window.Size
     }
 
 
 type Msg
     = OnAnimationFrame ( Time, Gamepad.Blob ) -- This one is called directly by Config
-    | OnKeyboardMsg Keyboard.Extra.Msg
+    | OnClick
+    | OnInputMsg Input.Msg
     | OnWindowResizes Window.Size
 
 
@@ -49,13 +52,10 @@ init =
     let
         game =
             Game.init
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
-              |> Game.addPlayer |> Tuple.second
+                |> (Game.addPlayer >> Tuple.second)
     in
         ( { game = game
-          , pressedKeys = []
+          , input = Input.init
           , windowSize =
                 { width = 100
                 , height = 100
@@ -79,12 +79,13 @@ updateAnimationFrame config dt blob model =
         oldGame =
             model.game
 
-        ( playersMinusInputs, players ) =
+        ( playersMinusInputs, inputModel, players ) =
             Input.updatePlayersInput
                 { gamepads = Gamepad.getGamepads config.gamepadDatabase blob
                 , maybeConfig = config.maybeInputConfig
-                , pressedKeys = model.pressedKeys
                 }
+                dt
+                model.input
                 oldGame.players
 
         addNewPlayer =
@@ -97,7 +98,11 @@ updateAnimationFrame config dt blob model =
         game =
             { oldGame | players = players } |> addNewPlayer
     in
-        noCmd { model | game = Game.think dt game }
+        noCmd
+            { model
+                | game = Game.think dt game
+                , input = inputModel
+            }
 
 
 update : Config -> Msg -> Model -> ( Model, Cmd Msg )
@@ -106,8 +111,11 @@ update config msg model =
         OnAnimationFrame ( dt, blob ) ->
             updateAnimationFrame config dt blob model
 
-        OnKeyboardMsg keyboardMsg ->
-            noCmd { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
+        OnClick ->
+            ( model, MousePort.lock )
+
+        OnInputMsg msg ->
+            { model | input = Input.update msg model.input } |> noCmd
 
         OnWindowResizes size ->
             noCmd { model | windowSize = size }
@@ -168,7 +176,10 @@ view model =
             |> List.map viewPlayer
             |> List.Extra.groupsOf columns
             |> List.map (div [ class "playerViewport-Row" ])
-            |> div [ class "playerViewport-Rows" ]
+            |> div
+                [ class "playerViewport-Rows"
+                , Html.Events.onClick OnClick
+                ]
 
 
 
@@ -179,5 +190,5 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Window.resizes OnWindowResizes
-        , Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
+        , Input.subscriptions model.input |> Sub.map OnInputMsg
         ]

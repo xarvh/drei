@@ -7,6 +7,25 @@ import Player exposing (Player)
 import Time exposing (Time)
 
 
+
+
+vec2Rotate : Float -> Vec2 -> Vec2
+vec2Rotate a v =
+    let
+        ( ox, oy ) =
+            Vec2.toTuple v
+
+        -- positive angles are *clockwise*
+        nx =
+            ox * cos a + oy * sin a
+
+        ny =
+            -ox * sin a + oy * cos a
+    in
+        vec2 nx ny
+
+
+
 -- Game
 
 
@@ -113,7 +132,9 @@ thinkHero game dt id hero =
             let
                 -- meters per second
                 velocity =
-                    Vec2.scale maxHeroSpeed player.inputState.move
+                    player.inputState.move
+                        |> vec2Rotate (Vec2.getX player.aim)
+                        |> Vec2.scale maxHeroSpeed
 
                 dp =
                     Vec2.scale dt velocity
