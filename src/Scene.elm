@@ -21,37 +21,34 @@ perspective viewportWidth viewportHeight =
         Mat4.makePerspective 45 ratio 0.01 100
 
 
+
 camera : Vec2 -> Vec2 -> Mat4
-camera direction target =
+camera aimDirection playerPosition =
     let
-        ( x, y ) =
-            Vec2.toTuple target
+        ( playerX, playerY ) =
+            Vec2.toTuple playerPosition
 
-        targetPosition =
-            vec3 x y 0
+        ( yaw, pitch ) =
+            Vec2.toTuple aimDirection
 
-        cameraOffset =
-            vec3 0 0 3
-                |> Mat4.transform (Mat4.makeRotate (Vec2.getY direction) (vec3 1 0 0))
-
-        cameraPosition =
-            Vec3.add targetPosition cameraOffset
-
-        upDirection =
-            vec3 0 1 0
     in
-        Mat4.makeLookAt cameraPosition targetPosition upDirection
+          -- We need the inverse of all transformations, in inverse order
+          Mat4.identity
+            |> Mat4.translate3 -0.5 0 -3
+            |> Mat4.rotate (pitch - turns 0.25) (vec3 1 0 0)
+            |> Mat4.rotate yaw (vec3 0 0 1)
+            |> Mat4.translate3 -playerX -playerY 0
 
 
 entities : Maybe Player -> { width : Int, height : Int } -> Game -> List WebGL.Entity
 entities maybeViewer viewport game =
     let
-        cameraDirection =
+        aimDirection =
             maybeViewer
                 |> Maybe.map .aim
                 |> Maybe.withDefault (vec2 0 0)
 
-        cameraTarget =
+        playerPosition =
             maybeViewer
                 |> Maybe.andThen (Game.playerToHero game)
                 |> Maybe.map .position
@@ -61,7 +58,7 @@ entities maybeViewer viewport game =
             perspective viewport.width viewport.height
 
         c =
-            camera cameraDirection cameraTarget
+            camera aimDirection playerPosition
 
         perspectiveAndcamera =
             Mat4.mul p c

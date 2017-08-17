@@ -59,7 +59,7 @@ keyboardAndMouseToInputState : Model -> Player.InputState
 keyboardAndMouseToInputState model =
     let
         pixelsForAFullTurn =
-            1000
+            2000
 
         turningRatio =
             turns 1 / pixelsForAFullTurn
