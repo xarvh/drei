@@ -77,4 +77,8 @@ cube =
             -- left
             , ( ltf, ltb, lbf )
             , ( lbf, lbb, ltb )
+
+            -- right
+            , ( rtf, rtb, rbf )
+            , ( rbf, rbb, rtb )
             ]

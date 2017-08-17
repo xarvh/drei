@@ -30,7 +30,7 @@ type alias Uniforms =
 -- shaders
 
 
-vertexShader : Shader Meshes.PlainVertex Uniforms { vCameraCoord : Vec4 }
+vertexShader : Shader Meshes.PlainVertex Uniforms { fog : Float }
 vertexShader =
     [glsl|
         precision mediump float;
@@ -39,28 +39,27 @@ vertexShader =
 
         uniform mat4 transform;
 
-        varying vec4 vCameraCoord;
+        varying float fog;
 
         void main () {
-            vCameraCoord = transform * vec4(position, 1.0);
-            gl_Position = vCameraCoord;
+            gl_Position = transform * vec4(position, 1.0);
+            fog = length(gl_Position.xyz) / 10.0;
         }
     |]
 
 
-fragmentShader : Shader {} Uniforms { vCameraCoord : Vec4 }
+fragmentShader : Shader {} Uniforms { fog : Float }
 fragmentShader =
     [glsl|
         precision mediump float;
 
-        varying vec4 vCameraCoord;
+        varying float fog;
 
         vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
         vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
 
         void main() {
-            float fogFactor = gl_FragCoord.z / gl_FragCoord.w;
-            gl_FragColor = mix(fogColor, heroColor, fogFactor);
+            gl_FragColor = mix(heroColor, fogColor, fog);
         }
     |]
 
