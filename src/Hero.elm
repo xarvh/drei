@@ -26,40 +26,58 @@ type alias Uniforms =
     }
 
 
+type alias Varyings =
+    { vfog : Float
+    , vnormal : Vec3
+    }
+
+
 
 -- shaders
 
 
-vertexShader : Shader Meshes.PlainVertex Uniforms { fog : Float }
+vertexShader : Shader Meshes.PlainVertex Uniforms Varyings
 vertexShader =
     [glsl|
         precision mediump float;
 
+        attribute vec3 normal;
         attribute vec3 position;
 
         uniform mat4 transform;
 
-        varying float fog;
+        varying float vfog;
+        varying vec3 vnormal;
 
         void main () {
             gl_Position = transform * vec4(position, 1.0);
-            fog = length(gl_Position.xyz) / 10.0;
+            vfog = length(gl_Position.xyz) / 10.0;
+            vnormal = normalize((transform * vec4(normal, 1.0)).xyz);
         }
     |]
 
 
-fragmentShader : Shader {} Uniforms { fog : Float }
+fragmentShader : Shader {} Uniforms Varyings
 fragmentShader =
     [glsl|
         precision mediump float;
 
-        varying float fog;
+        varying float vfog;
+        varying vec3 vnormal;
 
         vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
-        vec4 fogColor = vec4(1.0, 1.0, 1.0, 1.0);
+        vec3 lightDirection = vec3(1.0, -1.0, -1.0);
+
+        vec4 white = vec4(1.0);
+        vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+        vec4 fogColor = white;
 
         void main() {
-            gl_FragColor = mix(heroColor, fogColor, fog);
+            float lightIntensity = 0.5 + 0.5 * dot(vnormal, -1.0 * lightDirection);
+
+            vec4 colorWithLight = mix(black, heroColor, lightIntensity);
+
+            gl_FragColor = mix(colorWithLight, fogColor, vfog);
         }
     |]
 
