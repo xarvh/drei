@@ -12,8 +12,8 @@ import WebGL exposing (Mesh, Shader)
 type alias Hero =
     { id : Int
     , heading : Float
-    , position : Vec2
     , playerId : Int
+    , position : Vec3
     }
 
 
@@ -89,17 +89,11 @@ fragmentShader =
 entity : Mat4 -> Hero -> WebGL.Entity
 entity perspectiveAndCamera hero =
     let
-        ( x, y ) =
-            Vec2.toTuple hero.position
-
-        z =
-            0.1
-
         translation =
-            Mat4.makeTranslate (vec3 x y z)
+            Mat4.makeTranslate hero.position
 
         rotation =
-            Mat4.makeRotate hero.heading (vec3 0 0 -1)
+            Mat4.makeRotate hero.heading (vec3 0 -1 0)
 
         transform =
             Mat4.identity

@@ -16,31 +16,34 @@ cube : Mesh PlainVertex
 cube =
     let
         size =
-            0.5
+            1
+
+        half =
+            size / 2
 
         vertex x y z =
             vec3 x y z
 
         -- X
         left =
-            -size
+            -half
 
         right =
-            size
+            half
 
         -- Y
         top =
             size
 
         bottom =
-            -size
+            0
 
         -- Z
         front =
-            size
+            half
 
         back =
-            -size
+            -half
 
         -- vertexes
         ltf =

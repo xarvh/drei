@@ -34,17 +34,35 @@ type alias MeshVertex =
 
 squareMesh =
     let
+        size =
+            0.8
+
+        half =
+            size / 2
+
+        left =
+            -half
+
+        right =
+            half
+
+        front =
+            half
+
+        back =
+            -half
+
         a =
-            vec3 -0.4 -0.4 0
+            vec3 left 0 back
 
         b =
-            vec3 -0.4 0.4 0
+            vec3 left 0 front
 
         c =
-            vec3 0.4 0.4 0
+            vec3 right 0 front
 
         d =
-            vec3 0.4 -0.4 0
+            vec3 right 0 back
 
         white =
             vec3 1 1 1
@@ -157,11 +175,11 @@ tile perspectiveAndCamera ( tileI, tileJ ) =
         x =
             toFloat tileI - planeSize / 2 + 0.5
 
-        y =
+        z =
             toFloat tileJ - planeSize / 2 + 0.5
 
         uniforms =
-            { translation = Mat4.makeTranslate (vec3 x y 0)
+            { translation = Mat4.makeTranslate (vec3 x 0 z)
             , perspectiveAndCamera = perspectiveAndCamera
             , duskDawn = 0
             }
@@ -175,10 +193,10 @@ entities perspectiveAndCamera =
         xs =
             List.range 0 (planeSize - 1)
 
-        ys =
+        zs =
             List.range 0 (planeSize - 1)
 
-        xys =
-            xs |> List.map (\x -> ys |> List.map (\y -> ( x, y ))) |> List.concat
+        xzs =
+            xs |> List.map (\x -> zs |> List.map (\z -> ( x, z ))) |> List.concat
     in
-        List.map (tile perspectiveAndCamera) xys
+        List.map (tile perspectiveAndCamera) xzs

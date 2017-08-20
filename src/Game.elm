@@ -1,6 +1,7 @@
 module Game exposing (..)
 
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
+import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Dict exposing (Dict)
 import Hero exposing (Hero)
 import Player exposing (Player)
@@ -20,7 +21,7 @@ vec2Rotate a v =
             ox * cos a + oy * sin a
 
         ny =
-            -ox * sin a + oy * cos a
+            ox * sin a - oy * cos a
     in
         vec2 nx ny
 
@@ -90,7 +91,7 @@ addHero player oldGame =
             { id = id
             , heading = turns 0.1
             , playerId = player.id
-            , position = vec2 0 0
+            , position = vec3 0 0.1 0
             }
 
         heroes =
@@ -131,16 +132,17 @@ thinkHero game dt id hero =
         Just player ->
             let
                 -- meters per second
-                velocity =
+                (vx, vz) =
                     player.inputState.move
                         |> vec2Rotate (Vec2.getX player.aim)
                         |> Vec2.scale maxHeroSpeed
+                        |> Vec2.toTuple
 
                 dp =
-                    Vec2.scale dt velocity
+                    Vec3.scale dt (vec3 vx 0 vz)
 
                 position =
-                    Vec2.add hero.position dp
+                    Vec3.add hero.position dp
             in
                 { hero | position = position }
 
