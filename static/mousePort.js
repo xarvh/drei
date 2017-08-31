@@ -5,6 +5,12 @@ function addMousePort(elmApp) {
     document.body.requestPointerLock();
   });
 
+  document.addEventListener('pointerlockchange', function () {
+    if (document.pointerLockElement == null) {
+      elmApp.ports.mousePointerUnlocked.send({});
+    }
+  }, false);
+
   document.addEventListener("mousemove", function(event) {
     elmApp.ports.mouseMovement.send([event.movementX, event.movementY]);
   }, false);

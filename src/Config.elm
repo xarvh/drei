@@ -40,6 +40,7 @@ type alias Model =
 type Msg
     = OnAppMsg App.Msg
     | OnGamepad ( Time, Gamepad.Blob )
+    | OnMouseUnlock
     | OnKey Int
     | OnInputConfig String
 
@@ -123,13 +124,17 @@ update msg model =
                         , hasKnownGamepads = knownGamepads > 0
                     }
 
+        OnMouseUnlock ->
+            noCmd { model | maybeModal = Just Main }
+
         OnKey code ->
             case code of
+                -- Esc button
                 27 ->
-                    if model.maybeModal == Nothing then
-                        ( { model | maybeModal = Just Main }, Cmd.none )
-                    else
-                        ( { model | maybeModal = Nothing }, MousePort.lock )
+                    -- When mouse pointer is locked, pressing Esc will NOT
+                    -- trigger the keypress, but will instead trigger mouse
+                    -- unlock.
+                    ( { model | maybeModal = Nothing }, MousePort.lock )
 
                 _ ->
                     noCmd model
@@ -226,6 +231,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Keyboard.ups OnKey
+        , MousePort.unlocked OnMouseUnlock
         , GamepadPort.gamepad OnGamepad
         , App.subscriptions model.app |> Sub.map OnAppMsg
         ]
