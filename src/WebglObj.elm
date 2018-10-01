@@ -138,10 +138,20 @@ resolveIndex object ( vIndex, nIndex ) =
 
 
 faceToTriangles : List a -> List ( a, a, a ) -> List ( a, a, a )
-faceToTriangles vertices tris =
-    case vertices of
-        a :: b :: c :: vs ->
-            faceToTriangles (b :: c :: vs) (( a, b, c ) :: tris)
+faceToTriangles face tris =
+    case face of
+        [] ->
+            tris
+
+        a :: tail ->
+            tailToTris a tail tris
+
+
+tailToTris : a -> List a -> List ( a, a, a ) -> List ( a, a, a )
+tailToTris a tail tris =
+    case tail of
+        b :: c :: xs ->
+            tailToTris a (c :: xs) (( a, b, c ) :: tris)
 
         _ ->
             tris
