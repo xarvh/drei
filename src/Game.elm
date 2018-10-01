@@ -5,7 +5,6 @@ import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Dict exposing (Dict)
 import Hero exposing (Hero)
 import Player exposing (Player)
-import Time exposing (Time)
 
 
 
@@ -13,15 +12,15 @@ import Time exposing (Time)
 vec2Rotate : Float -> Vec2 -> Vec2
 vec2Rotate a v =
     let
-        ( ox, oy ) =
-            Vec2.toTuple v
+        o =
+            Vec2.toRecord v
 
         -- positive angles are *clockwise*
         nx =
-            ox * cos a + oy * sin a
+            o.x * cos a + o.y * sin a
 
         ny =
-            ox * sin a - oy * cos a
+            o.x * sin a - o.y * cos a
     in
         vec2 nx ny
 
@@ -123,7 +122,7 @@ maxHeroSpeed =
     0.5
 
 
-thinkHero : Game -> Time -> Int -> Hero -> Hero
+thinkHero : Game -> Float -> Int -> Hero -> Hero
 thinkHero game dt id hero =
     case heroToPlayer game hero of
         Nothing ->
@@ -132,14 +131,14 @@ thinkHero game dt id hero =
         Just player ->
             let
                 -- meters per second
-                (vx, vz) =
+                v =
                     player.inputState.move
                         |> vec2Rotate (Vec2.getX player.aim)
                         |> Vec2.scale maxHeroSpeed
-                        |> Vec2.toTuple
+                        |> Vec2.toRecord
 
                 dp =
-                    Vec3.scale dt (vec3 vx 0 vz)
+                    Vec3.scale dt (vec3 v.x 0 v.x)
 
                 position =
                     Vec3.add hero.position dp
@@ -147,11 +146,12 @@ thinkHero game dt id hero =
                 { hero | position = position }
 
 
-think : Time -> Game -> Game
+think : Float -> Game -> Game
 think dtAsTime game =
     let
         dt =
-            Time.inSeconds dtAsTime
+            --TODO
+            dtAsTime
 
         heroes =
             game.heroes |> Dict.map (thinkHero game dt)

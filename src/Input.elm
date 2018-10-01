@@ -2,11 +2,11 @@ module Input exposing (..)
 
 import Dict exposing (Dict)
 import Gamepad exposing (Gamepad)
+import Keyboard exposing (Key)
+import Keyboard.Arrows
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import MousePort
-import Keyboard.Extra exposing (Key)
-import Player exposing (Player, InputState)
-import Time exposing (Time)
+import Player exposing (InputState, Player)
 
 
 -- types
@@ -18,7 +18,7 @@ type Config
 
 
 type Msg
-    = OnKeyboardMsg Keyboard.Extra.Msg
+    = OnKeyboardMsg Keyboard.Msg
     | OnMouseButton ( Int, Bool )
     | OnMouseMove ( Int, Int )
 
@@ -68,25 +68,26 @@ keyboardAndMouseToInputState model =
             Vec2.scale turningRatio model.mouseDelta
 
         { x, y } =
-            Keyboard.Extra.wasd model.pressedKeys
+            Keyboard.Arrows.wasd model.pressedKeys
 
         move =
             vec2 (toFloat x) (toFloat y)
     in
-        { dAim = dAim
-        , fire = model.mouseButtonLeft
-        , move = move
-        }
+    { dAim = dAim
+    , fire = model.mouseButtonLeft
+    , move = move
+    }
 
 
-gamepadToInputState : Time -> Gamepad -> Player.InputState
+gamepadToInputState : Float -> Gamepad -> Player.InputState
 gamepadToInputState dt gamepad =
     let
         -- Mouse movement directly represents a delta movement.
         -- Unlike mouse movement, the gamepad's stick represents a *speed*
         -- so it must be multiplied by the frame refresh interval.
         timeForAFullTurn =
-            2000 * Time.millisecond
+            -- TODO: xxxxxxxxx
+            2
 
         maxTurningSpeed =
             turns 1 / timeForAFullTurn
@@ -95,18 +96,18 @@ gamepadToInputState dt gamepad =
             dt * maxTurningSpeed
 
         dAim =
-            vec2 (Gamepad.rightX gamepad) -(Gamepad.rightY gamepad) |> Vec2.scale maxDeltaAim
+            vec2 (Gamepad.value gamepad Gamepad.RightX) -(Gamepad.value gamepad Gamepad.RightY) |> Vec2.scale maxDeltaAim
 
         fire =
-            Gamepad.aIsPressed gamepad
+            Gamepad.isPressed gamepad Gamepad.A
 
         move =
-            vec2 (Gamepad.leftX gamepad) (Gamepad.leftY gamepad)
+            vec2 (Gamepad.value gamepad Gamepad.LeftX) (Gamepad.value gamepad Gamepad.LeftY)
     in
-        { dAim = dAim
-        , fire = fire
-        , move = move
-        }
+    { dAim = dAim
+    , fire = fire
+    , move = move
+    }
 
 
 
@@ -120,8 +121,11 @@ applyInputState inputState player =
         -- ticks, but only by frame display time.
         -- Because of this, aiming direction should be updated as part of the input,
         -- not as part of the game.
+        { x, y } =
+            Vec2.add player.aim inputState.dAim |> Vec2.toRecord
+
         ( unclampedTraverse, unclampedElevation ) =
-            Vec2.add player.aim inputState.dAim |> Vec2.toTuple
+            ( x, y )
 
         -- rotation in the vertical plane
         -- TODO: use "invert Y axis" config
@@ -134,17 +138,17 @@ applyInputState inputState player =
 
         -- mouse represents a *movement* <--- this doesn't care about dt
     in
-        { player
-            | inputState = inputState
-            , aim = vec2 traverse elevation
-        }
+    { player
+        | inputState = inputState
+        , aim = vec2 traverse elevation
+    }
 
 
 updatePlayersInput :
     { gamepads : List Gamepad
     , maybeConfig : Maybe Config
     }
-    -> Time
+    -> Float
     -> Model
     -> Dict Int Player
     -> ( Int, Model, Dict Int Player )
@@ -152,8 +156,8 @@ updatePlayersInput { maybeConfig, gamepads } dt model players =
     let
         config =
             case maybeConfig of
-                Just config ->
-                    config
+                Just c ->
+                    c
 
                 Nothing ->
                     if List.length gamepads > 0 then
@@ -196,10 +200,10 @@ updatePlayersInput { maybeConfig, gamepads } dt model players =
         tupleToTuple ( player, inputState ) =
             ( player.id, applyInputState inputState player )
     in
-        List.map2 (,) sortedPlayers (inputs ++ fillers)
-            |> List.map tupleToTuple
-            |> Dict.fromList
-            |> (,,) playersMinusInputs { model | mouseDelta = v0 }
+    List.map2 Tuple.pair sortedPlayers (inputs ++ fillers)
+        |> List.map tupleToTuple
+        |> Dict.fromList
+        |> (\a b c -> ( a, b, c )) playersMinusInputs { model | mouseDelta = v0 }
 
 
 
@@ -210,7 +214,7 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         OnKeyboardMsg keyboardMsg ->
-            { model | pressedKeys = Keyboard.Extra.update keyboardMsg model.pressedKeys }
+            { model | pressedKeys = Keyboard.update keyboardMsg model.pressedKeys }
 
         OnMouseButton ( button, toggle ) ->
             case button of
@@ -234,7 +238,7 @@ update msg model =
 subscriptions model =
     -- TODO disable the subscriptions if key&mouse are not used
     Sub.batch
-        [ Sub.map OnKeyboardMsg Keyboard.Extra.subscriptions
+        [ Sub.map OnKeyboardMsg Keyboard.subscriptions
         , MousePort.movement OnMouseMove
         , MousePort.button OnMouseButton
         ]

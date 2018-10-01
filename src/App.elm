@@ -7,17 +7,15 @@ import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events
-import Keyboard.Extra exposing (Key)
 import Input
 import List.Extra
 import LocalStoragePort
 import MousePort
 import Player exposing (Player)
-import Task
-import Time exposing (Time)
 import Scene
+import Task
+import Viewport
 import WebGL
-import Window
 
 
 -- types
@@ -25,22 +23,22 @@ import Window
 
 type alias Config =
     { maybeInputConfig : Maybe Input.Config
-    , gamepadDatabase : Gamepad.Database
+    , gamepadDatabase : Gamepad.UserMappings
     }
 
 
 type alias Model =
     { game : Game
     , input : Input.Model
-    , windowSize : Window.Size
+    , windowSize : Viewport.PixelSize
     }
 
 
 type Msg
-    = OnAnimationFrame ( Time, Gamepad.Blob ) -- This one is called directly by Config
+    = OnAnimationFrame Gamepad.Blob -- This one is called directly by Config
     | OnClick
     | OnInputMsg Input.Msg
-    | OnWindowResizes Window.Size
+    | OnWindowResizes Viewport.PixelSize
 
 
 
@@ -54,15 +52,15 @@ init =
             Game.init
                 |> (Game.addPlayer >> Tuple.second)
     in
-        ( { game = game
-          , input = Input.init
-          , windowSize =
-                { width = 100
-                , height = 100
-                }
-          }
-        , Task.perform OnWindowResizes Window.size
-        )
+    ( { game = game
+      , input = Input.init
+      , windowSize =
+            { width = 100
+            , height = 100
+            }
+      }
+    , Viewport.getWindowSize OnWindowResizes
+    )
 
 
 
@@ -73,7 +71,7 @@ noCmd model =
     ( model, Cmd.none )
 
 
-updateAnimationFrame : Config -> Time -> Gamepad.Blob -> Model -> ( Model, Cmd Msg )
+updateAnimationFrame : Config -> Float -> Gamepad.Blob -> Model -> ( Model, Cmd Msg )
 updateAnimationFrame config dt blob model =
     let
         oldGame =
@@ -98,24 +96,24 @@ updateAnimationFrame config dt blob model =
         game =
             { oldGame | players = players } |> addNewPlayer
     in
-        noCmd
-            { model
-                | game = Game.think dt game
-                , input = inputModel
-            }
+    noCmd
+        { model
+            | game = Game.think dt game
+            , input = inputModel
+        }
 
 
 update : Config -> Msg -> Model -> ( Model, Cmd Msg )
 update config msg model =
     case msg of
-        OnAnimationFrame ( dt, blob ) ->
-            updateAnimationFrame config dt blob model
+        OnAnimationFrame blob ->
+            updateAnimationFrame config (Gamepad.animationFrameDelta blob) blob model
 
         OnClick ->
             ( model, MousePort.lock )
 
-        OnInputMsg msg ->
-            { model | input = Input.update msg model.input } |> noCmd
+        OnInputMsg inputMsg ->
+            { model | input = Input.update inputMsg model.input } |> noCmd
 
         OnWindowResizes size ->
             noCmd { model | windowSize = size }
@@ -125,14 +123,14 @@ update config msg model =
 -- view
 
 
-shrinkViewport : Int -> Window.Size -> Window.Size
+shrinkViewport : Int -> Viewport.PixelSize -> Viewport.PixelSize
 shrinkViewport shrink viewport =
     { width = viewport.width - shrink
     , height = viewport.height - shrink
     }
 
 
-splitScreen : Window.Size -> Int -> ( Int, Window.Size )
+splitScreen : Viewport.PixelSize -> Int -> ( Int, Viewport.PixelSize )
 splitScreen windowSize playersNumber =
     -- TODO drop the assumption that the screen is landscape
     case playersNumber of
@@ -172,14 +170,14 @@ view model =
                 ]
                 (Scene.entities (Just player) viewportsSize model.game)
     in
-        sortedPlayers
-            |> List.map viewPlayer
-            |> List.Extra.groupsOf columns
-            |> List.map (div [ class "playerViewport-Row" ])
-            |> div
-                [ class "playerViewport-Rows"
-                , Html.Events.onClick OnClick
-                ]
+    sortedPlayers
+        |> List.map viewPlayer
+        |> List.Extra.groupsOf columns
+        |> List.map (div [ class "playerViewport-Row" ])
+        |> div
+            [ class "playerViewport-Rows"
+            , Html.Events.onClick OnClick
+            ]
 
 
 
@@ -189,6 +187,6 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Window.resizes OnWindowResizes
+        [ Viewport.onWindowResize OnWindowResizes
         , Input.subscriptions model.input |> Sub.map OnInputMsg
         ]

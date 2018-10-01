@@ -1,12 +1,12 @@
 module Hero exposing (..)
 
-import Color exposing (Color)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2, vec2)
 import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Math.Vector4 as Vec4 exposing (Vec4, vec4)
 import Meshes
 import WebGL exposing (Mesh, Shader)
+import WebglMesh
 
 
 type alias Hero =
@@ -36,13 +36,13 @@ type alias Varyings =
 -- shaders
 
 
-vertexShader : Shader Meshes.PlainVertex Uniforms Varyings
+vertexShader : Shader WebglMesh.VertexAttributes Uniforms Varyings
 vertexShader =
     [glsl|
         precision mediump float;
 
-        attribute vec3 normal;
-        attribute vec3 position;
+        attribute vec3 v;
+        attribute vec3 n;
 
         uniform mat4 transform;
 
@@ -50,9 +50,9 @@ vertexShader =
         varying vec3 vnormal;
 
         void main () {
-            gl_Position = transform * vec4(position, 1.0);
+            gl_Position = transform * vec4(v, 1.0);
             vfog = length(gl_Position.xyz) / 10.0;
-            vnormal = normalize((transform * vec4(normal, 1.0)).xyz);
+            vnormal = normalize((transform * vec4(n, 1.0)).xyz);
         }
     |]
 
@@ -105,4 +105,4 @@ entity perspectiveAndCamera hero =
             { transform = transform
             }
     in
-        WebGL.entity vertexShader fragmentShader Meshes.cube uniforms
+    WebGL.entity vertexShader fragmentShader WebglMesh.mesh uniforms

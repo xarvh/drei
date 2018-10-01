@@ -11,17 +11,21 @@
     <script type="text/javascript" src="static/localStoragePort.js"></script>
   </head>
   <body>
+    <div id='herzog-drei'></div>
     <script type="text/javascript">
-      // A single source of truth for the local storage key avoids frustrating bugs
-      var gamepadDatabaseKey = "gamepadDatabase";
-      // We pass gamepadDatabaseKey and gamepadDatabaseAsString as flags to Elm
-      var elmApp = Elm.Main.fullscreen({
-        gamepadDatabaseKey: gamepadDatabaseKey,
-        gamepadDatabaseAsString: localStorage[gamepadDatabaseKey] || "",
-      });
-      addGamepadPort(elmApp);
-      addMousePort(elmApp);
-      addLocalStoragePort(elmApp);
+        // A single source of truth for the local storage key avoids frustrating bugs
+        // We pass gamepadDatabaseKey and gamepadDatabaseAsString as flags to Elm
+        var gamepadDatabaseKey = "gamepadDatabase";
+        var elmApp = Elm.Main.init({
+          node: document.getElementById('herzog-drei'),
+          flags: {
+          gamepadDatabaseKey: gamepadDatabaseKey,
+          gamepadDatabaseAsString: localStorage[gamepadDatabaseKey] || "",
+          }
+        });
+        addGamepadPort(elmApp);
+        addMousePort(elmApp);
+        addLocalStoragePort(elmApp);
     </script>
   </body>
 </html>

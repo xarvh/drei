@@ -6,11 +6,10 @@ import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (class, disabled, selected, value)
 import Html.Events
+import Input
 import Json.Decode
 import Keyboard
 import MousePort
-import Input
-import Time exposing (Time)
 
 
 -- types
@@ -28,7 +27,7 @@ type ConfigModal
 
 type alias Model =
     { app : App.Model
-    , gamepadDatabase : Gamepad.Database
+    , gamepadDatabase : Gamepad.UserMappings
     , gamepadDatabaseKey : String -- This is the key we use for the database in the browser's local storage
     , hasGamepads : Bool
     , hasKnownGamepads : Bool
@@ -39,7 +38,7 @@ type alias Model =
 
 type Msg
     = OnAppMsg App.Msg
-    | OnGamepad ( Time, Gamepad.Blob )
+    | OnGamepad Gamepad.Blob
     | OnMouseUnlock
     | OnKey Int
     | OnInputConfig String
@@ -57,8 +56,8 @@ init flags =
 
         gamepadDatabase =
             flags.gamepadDatabaseAsString
-                |> Gamepad.databaseFromString
-                |> Result.withDefault Gamepad.emptyDatabase
+                |> Gamepad.userMappingsFromString
+                |> Result.withDefault Gamepad.emptyUserMappings
 
         model =
             { app = app
@@ -73,7 +72,7 @@ init flags =
         cmd =
             Cmd.map OnAppMsg appCmd
     in
-        ( model, cmd )
+    ( model, cmd )
 
 
 
@@ -97,32 +96,30 @@ update msg model =
                         appMsg
                         model.app
             in
-                ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
+            ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
 
-        OnGamepad ( dt, blob ) ->
+        OnGamepad blob ->
             let
+                dt =
+                    Gamepad.animationFrameDelta blob
+
                 knownGamepads =
                     blob
                         |> Gamepad.getGamepads model.gamepadDatabase
                         |> List.length
 
-                allGamepads =
-                    blob
-                        |> Gamepad.getAllGamepadsAsUnknown
-                        |> List.length
-
                 -- Stop app time updates when the modal is open
                 appUpdate =
                     if model.maybeModal == Nothing then
-                        ( dt, blob ) |> App.OnAnimationFrame |> OnAppMsg |> update
+                        blob |> App.OnAnimationFrame |> OnAppMsg |> update
                     else
                         noCmd
             in
-                appUpdate
-                    { model
-                        | hasGamepads = allGamepads > 0
-                        , hasKnownGamepads = knownGamepads > 0
-                    }
+            appUpdate
+                { model
+                    | hasGamepads = True
+                    , hasKnownGamepads = knownGamepads > 0
+                }
 
         OnMouseUnlock ->
             noCmd { model | maybeModal = Just Main }
@@ -209,18 +206,21 @@ viewConfig model =
         ]
 
 
-view : Model -> Html Msg
 view model =
-    div
-        [ class "root" ]
-        [ App.view model.app |> Html.map OnAppMsg
-        , case model.maybeModal of
-            Nothing ->
-                text ""
+    { title = ""
+    , body =
+        [ div
+            [ class "root" ]
+            [ App.view model.app |> Html.map OnAppMsg
+            , case model.maybeModal of
+                Nothing ->
+                    text ""
 
-            Just Main ->
-                viewConfig model
+                Just Main ->
+                    viewConfig model
+            ]
         ]
+    }
 
 
 
@@ -230,8 +230,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Keyboard.ups OnKey
-        , MousePort.unlocked OnMouseUnlock
+        -- TODO [ Keyboard.ups OnKey
+        [ MousePort.unlocked OnMouseUnlock
         , GamepadPort.gamepad OnGamepad
         , App.subscriptions model.app |> Sub.map OnAppMsg
         ]
