@@ -107,7 +107,7 @@ update : Config -> Msg -> Model -> ( Model, Cmd Msg )
 update config msg model =
     case msg of
         OnAnimationFrame blob ->
-            updateAnimationFrame config (Gamepad.animationFrameDelta blob) blob model
+            updateAnimationFrame config (Gamepad.animationFrameDelta blob / 1000) blob model
 
         OnClick ->
             ( model, MousePort.lock )

@@ -1,13 +1,14 @@
 module Config exposing (..)
 
 import App
+import Browser.Events
 import Gamepad
 import GamepadPort
 import Html exposing (..)
 import Html.Attributes exposing (class, disabled, selected, value)
 import Html.Events
 import Input
-import Json.Decode
+import Json.Decode exposing (Decoder)
 import Keyboard
 import MousePort
 
@@ -40,7 +41,7 @@ type Msg
     = OnAppMsg App.Msg
     | OnGamepad Gamepad.Blob
     | OnMouseUnlock
-    | OnKey Int
+    | OnKey String
     | OnInputConfig String
 
 
@@ -100,9 +101,6 @@ update msg model =
 
         OnGamepad blob ->
             let
-                dt =
-                    Gamepad.animationFrameDelta blob
-
                 knownGamepads =
                     blob
                         |> Gamepad.getGamepads model.gamepadDatabase
@@ -124,10 +122,9 @@ update msg model =
         OnMouseUnlock ->
             noCmd { model | maybeModal = Just Main }
 
-        OnKey code ->
-            case code of
-                -- Esc button
-                27 ->
+        OnKey keyName ->
+            case keyName of
+                "Escape" ->
                     -- When mouse pointer is locked, pressing Esc will NOT
                     -- trigger the keypress, but will instead trigger mouse
                     -- unlock.
@@ -230,11 +227,26 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        -- TODO [ Keyboard.ups OnKey
-        [ MousePort.unlocked OnMouseUnlock
+        [ Browser.Events.onKeyUp (keyboardDecoder OnKey)
+        , MousePort.unlocked OnMouseUnlock
         , GamepadPort.gamepad OnGamepad
         , App.subscriptions model.app |> Sub.map OnAppMsg
         ]
+
+
+keyboardDecoder : (String -> msg) -> Decoder msg
+keyboardDecoder msg =
+    Json.Decode.string
+        |> Json.Decode.field "key"
+        |> Json.Decode.map (singleToUpper >> msg)
+
+
+singleToUpper : String -> String
+singleToUpper s =
+    if String.length s /= 1 then
+        s
+    else
+        String.toUpper s
 
 
 
