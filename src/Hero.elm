@@ -6,6 +6,7 @@ import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Math.Vector4 as Vec4 exposing (Vec4, vec4)
 import Meshes
 import WebGL exposing (Mesh, Shader)
+import WebGL.Texture exposing (Texture)
 import WebglMesh
 
 
@@ -23,6 +24,7 @@ type alias Hero =
 
 type alias Uniforms =
     { transform : Mat4
+    , t : Texture
     }
 
 
@@ -45,6 +47,7 @@ vertexShader =
         attribute vec3 n;
 
         uniform mat4 transform;
+        uniform sampler2D t;
 
         varying float vfog;
         varying vec3 vnormal;
@@ -62,22 +65,25 @@ fragmentShader =
     [glsl|
         precision mediump float;
 
+        uniform mat4 transform;
+        uniform sampler2D t;
+
         varying float vfog;
         varying vec3 vnormal;
 
-        vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
-        vec3 lightDirection = vec3(1.0, -1.0, -1.0);
-
-        vec4 white = vec4(1.0);
-        vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
-        vec4 fogColor = white;
-
         void main() {
+            vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
+            vec3 lightDirection = vec3(1.0, -1.0, -1.0);
+
+            vec4 white = vec4(1.0);
+            vec4 black = vec4(0.0, 0.0, 0.0, 1.0);
+            vec4 fogColor = white;
+
             float lightIntensity = 0.5 + 0.5 * dot(vnormal, -1.0 * lightDirection);
 
             vec4 colorWithLight = mix(black, heroColor, lightIntensity);
 
-            gl_FragColor = mix(colorWithLight, fogColor, vfog);
+            gl_FragColor = texture2D(t, vnormal.xy); //mix(colorWithLight, fogColor, vfog);
         }
     |]
 
@@ -86,8 +92,8 @@ fragmentShader =
 -- entity
 
 
-entity : Mat4 -> Hero -> WebGL.Entity
-entity perspectiveAndCamera hero =
+entity : Texture -> Mat4 -> Hero -> WebGL.Entity
+entity texture perspectiveAndCamera hero =
     let
         translation =
             Mat4.makeTranslate hero.position
@@ -103,6 +109,7 @@ entity perspectiveAndCamera hero =
 
         uniforms =
             { transform = transform
+            , t = texture
             }
     in
     WebGL.entity vertexShader fragmentShader WebglMesh.mesh uniforms

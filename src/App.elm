@@ -16,6 +16,7 @@ import Scene
 import Task
 import Viewport
 import WebGL
+import WebGL.Texture exposing (Texture)
 
 
 -- types
@@ -31,6 +32,7 @@ type alias Model =
     { game : Game
     , input : Input.Model
     , windowSize : Viewport.PixelSize
+    , texture : Texture
     }
 
 
@@ -45,8 +47,8 @@ type Msg
 -- init
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Texture -> ( Model, Cmd Msg )
+init texture =
     let
         game =
             Game.init
@@ -58,6 +60,7 @@ init =
             { width = 100
             , height = 100
             }
+      , texture = texture
       }
     , Viewport.getWindowSize OnWindowResizes
     )
@@ -168,7 +171,7 @@ view model =
                 , Html.Attributes.height viewportsSize.height
                 , class "playerViewport"
                 ]
-                (Scene.entities (Just player) viewportsSize model.game)
+                (Scene.entities (Just player) viewportsSize model.texture model.game)
     in
     sortedPlayers
         |> List.map viewPlayer

@@ -9,6 +9,7 @@ import Math.Vector3 as Vec3 exposing (Vec3, vec3)
 import Plane
 import Player exposing (Player)
 import WebGL exposing (Mesh, Shader)
+import WebGL.Texture exposing (Texture)
 
 
 perspective : Int -> Int -> Mat4
@@ -37,8 +38,8 @@ camera aimDirection playerPosition =
         |> Mat4.translate (Vec3.scale -1 playerPosition)
 
 
-entities : Maybe Player -> { width : Int, height : Int } -> Game -> List WebGL.Entity
-entities maybeViewer viewport game =
+entities : Maybe Player -> { width : Int, height : Int } -> Texture -> Game -> List WebGL.Entity
+entities maybeViewer viewport texture game =
     let
         aimDirection =
             maybeViewer
@@ -63,7 +64,7 @@ entities maybeViewer viewport game =
         heroes =
             game.heroes
                 |> Dict.values
-                |> List.map (Hero.entity perspectiveAndcamera)
+                |> List.map (Hero.entity texture perspectiveAndcamera)
 
         planeTiles =
             Plane.entities perspectiveAndcamera

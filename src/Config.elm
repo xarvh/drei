@@ -11,6 +11,8 @@ import Input
 import Json.Decode exposing (Decoder)
 import Keyboard
 import MousePort
+import Task
+import WebGL.Texture exposing (Texture)
 
 
 -- types
@@ -27,7 +29,7 @@ type ConfigModal
 
 
 type alias Model =
-    { app : App.Model
+    { maybeApp : Maybe App.Model
     , gamepadDatabase : Gamepad.UserMappings
     , gamepadDatabaseKey : String -- This is the key we use for the database in the browser's local storage
     , hasGamepads : Bool
@@ -43,6 +45,7 @@ type Msg
     | OnMouseUnlock
     | OnKey String
     | OnInputConfig String
+    | OnTexture (Result WebGL.Texture.Error Texture)
 
 
 
@@ -52,16 +55,13 @@ type Msg
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     let
-        ( app, appCmd ) =
-            App.init
-
         gamepadDatabase =
             flags.gamepadDatabaseAsString
                 |> Gamepad.userMappingsFromString
                 |> Result.withDefault Gamepad.emptyUserMappings
 
         model =
-            { app = app
+            { maybeApp = Nothing
             , gamepadDatabase = gamepadDatabase
             , gamepadDatabaseKey = flags.gamepadDatabaseKey
             , hasGamepads = False
@@ -71,7 +71,9 @@ init flags =
             }
 
         cmd =
-            Cmd.map OnAppMsg appCmd
+            Cmd.batch
+                [ WebGL.Texture.load "meh.png" |> Task.attempt OnTexture
+                ]
     in
     ( model, cmd )
 
@@ -87,17 +89,36 @@ noCmd model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        OnTexture result ->
+            case result of
+                Err err ->
+                    Debug.todo (Debug.toString err)
+
+                Ok texture ->
+                    let
+                        ( app, appCmd ) =
+                            App.init texture
+                    in
+                    ( { model | maybeApp = Just app }
+                    , Cmd.map OnAppMsg appCmd
+                    )
+
         OnAppMsg appMsg ->
-            let
-                ( appModel, appCmd ) =
-                    App.update
-                        { maybeInputConfig = model.maybeInputConfig
-                        , gamepadDatabase = model.gamepadDatabase
-                        }
-                        appMsg
-                        model.app
-            in
-            ( { model | app = appModel }, Cmd.map OnAppMsg appCmd )
+            case model.maybeApp of
+                Nothing ->
+                    noCmd model
+
+                Just app ->
+                    let
+                        ( appModel, appCmd ) =
+                            App.update
+                                { maybeInputConfig = model.maybeInputConfig
+                                , gamepadDatabase = model.gamepadDatabase
+                                }
+                                appMsg
+                                app
+                    in
+                    ( { model | maybeApp = Just appModel }, Cmd.map OnAppMsg appCmd )
 
         OnGamepad blob ->
             let
@@ -208,7 +229,12 @@ view model =
     , body =
         [ div
             [ class "root" ]
-            [ App.view model.app |> Html.map OnAppMsg
+            [ case model.maybeApp of
+                Just app ->
+                    App.view app |> Html.map OnAppMsg
+
+                Nothing ->
+                    text ""
             , case model.maybeModal of
                 Nothing ->
                     text ""
@@ -230,7 +256,12 @@ subscriptions model =
         [ Browser.Events.onKeyUp (keyboardDecoder OnKey)
         , MousePort.unlocked OnMouseUnlock
         , GamepadPort.gamepad OnGamepad
-        , App.subscriptions model.app |> Sub.map OnAppMsg
+        , case model.maybeApp of
+            Just app ->
+                App.subscriptions app |> Sub.map OnAppMsg
+
+            Nothing ->
+                Sub.none
         ]
 
 
