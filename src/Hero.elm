@@ -32,6 +32,7 @@ type alias Varyings =
     { vfog : Float
     , vnormal : Vec3
     , localPosition : Vec3
+    , localNormal : Vec3
     }
 
 
@@ -53,9 +54,11 @@ vertexShader =
         varying float vfog;
         varying vec3 vnormal;
         varying vec3 localPosition;
+        varying vec3 localNormal;
 
         void main () {
             localPosition = v;
+            localNormal = n;
             gl_Position = transform * vec4(v, 1.0);
             vfog = length(gl_Position.xyz) / 10.0;
             vnormal = normalize((transform * vec4(n, 1.0)).xyz);
@@ -74,16 +77,15 @@ fragmentShader =
         varying float vfog;
         varying vec3 vnormal;
         varying vec3 localPosition;
-
-
+        varying vec3 localNormal;
 
         void main() {
           // Make a base e1,e2 for the surface plane
-          float x = vnormal.x;
-          float y = vnormal.y;
-          float z = vnormal.z;
+          float x = localNormal.x;
+          float y = localNormal.y;
+          float z = localNormal.z;
           vec3 e1 = normalize(vec3(y - z, z - x, x - y));
-          vec3 e2 = cross(vnormal, e1);
+          vec3 e2 = cross(localNormal, e1);
 
           vec2 texturePosition = vec2( dot(localPosition, e1), dot(localPosition, e2));
 
