@@ -67,7 +67,7 @@ init flags =
             , hasGamepads = False
             , hasKnownGamepads = False
             , maybeInputConfig = Nothing
-            , maybeModal = Just Main
+            , maybeModal = Nothing
             }
 
         cmd =
