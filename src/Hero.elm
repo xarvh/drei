@@ -31,6 +31,7 @@ type alias Uniforms =
 type alias Varyings =
     { vfog : Float
     , vnormal : Vec3
+    , localPosition : Vec3
     }
 
 
@@ -51,8 +52,10 @@ vertexShader =
 
         varying float vfog;
         varying vec3 vnormal;
+        varying vec3 localPosition;
 
         void main () {
+            localPosition = v;
             gl_Position = transform * vec4(v, 1.0);
             vfog = length(gl_Position.xyz) / 10.0;
             vnormal = normalize((transform * vec4(n, 1.0)).xyz);
@@ -70,8 +73,20 @@ fragmentShader =
 
         varying float vfog;
         varying vec3 vnormal;
+        varying vec3 localPosition;
+
+
 
         void main() {
+          // Make a base e1,e2 for the surface plane
+          float x = vnormal.x;
+          float y = vnormal.y;
+          float z = vnormal.z;
+          vec3 e1 = normalize(vec3(y - z, z - x, x - y));
+          vec3 e2 = cross(vnormal, e1);
+
+          vec2 texturePosition = vec2( dot(localPosition, e1), dot(localPosition, e2));
+
             vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
             vec3 lightDirection = vec3(1.0, -1.0, -1.0);
 
@@ -83,7 +98,7 @@ fragmentShader =
 
             vec4 colorWithLight = mix(black, heroColor, lightIntensity);
 
-            gl_FragColor = texture2D(t, vnormal.xy); //mix(colorWithLight, fogColor, vfog);
+            gl_FragColor = texture2D(t, texturePosition); //mix(colorWithLight, fogColor, vfog);
         }
     |]
 
