@@ -75,7 +75,14 @@ fragmentShader =
         varying vec2 texturePosition;
 
         void main() {
-            gl_FragColor = texture2D(t, texturePosition);
+            vec4 heroColor = vec4(0.0, 0.0, 1.0, 1.0);
+            vec4 white = vec4(1.0, 1.0, 1.0, 1.0);
+
+            float intensity = texture2D(t, texturePosition).r;
+
+            vec4 color = mix(heroColor, white, intensity / 1.0);
+
+            gl_FragColor = color;
         }
     |]
 
