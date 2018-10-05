@@ -12,7 +12,13 @@ import WavefrontObject exposing (FaceVertices(..), Line(..))
 
 type alias VertexAttributes =
     { v : Vec3
-    , n : Vec3
+
+    -- Smoothed normal
+    , s : Vec3
+
+    -- Tangents
+    , i : Vec3
+    , j : Vec3
     }
 
 
@@ -32,14 +38,48 @@ meshParser =
         |> Parser.map (.faces >> List.foldl faceToTriangles [] >> List.map fixNormal)
 
 
+fixNormal : ( RawAttributes, RawAttributes, RawAttributes ) -> ( VertexAttributes, VertexAttributes, VertexAttributes )
+fixNormal ( a, b, c ) =
+    let
+        ab =
+            Vec3.sub b.v a.v
+
+        ac =
+            Vec3.sub c.v a.v
+
+        i =
+            Vec3.normalize ab
+
+        j =
+            Vec3.cross ab ac |> Vec3.cross ab |> Vec3.normalize
+
+        vertex raw =
+            { v = raw.v
+            , s = raw.n
+            , i = i
+            , j = j
+            }
+    in
+    ( vertex a
+    , vertex b
+    , vertex c
+    )
+
+
 
 -- Temporary accumulator
+
+
+type alias RawAttributes =
+    { v : Vec3
+    , n : Vec3
+    }
 
 
 type alias Accumulator =
     { vs : Array Vec3
     , ns : Array Vec3
-    , faces : List (List VertexAttributes)
+    , faces : List (List RawAttributes)
     }
 
 
@@ -130,9 +170,9 @@ arrayGet name index array =
             Err <| name ++ " index is " ++ String.fromInt index ++ " but array length is " ++ String.fromInt (Array.length array)
 
 
-resolveIndex : Accumulator -> ( Int, Int ) -> Result String VertexAttributes
+resolveIndex : Accumulator -> ( Int, Int ) -> Result String RawAttributes
 resolveIndex object ( vIndex, nIndex ) =
-    Result.map2 VertexAttributes
+    Result.map2 RawAttributes
         (arrayGet "v" vIndex object.vs)
         (arrayGet "n" nIndex object.ns)
 
@@ -155,21 +195,3 @@ tailToTris a tail tris =
 
         _ ->
             tris
-
-
-fixNormal : ( VertexAttributes, VertexAttributes, VertexAttributes ) -> ( VertexAttributes, VertexAttributes, VertexAttributes )
-fixNormal ( a, b, c ) =
-    let
-        ab =
-            Vec3.sub b.v a.v
-
-        ac =
-            Vec3.sub c.v a.v
-
-        n =
-            Vec3.cross ab ac |> Vec3.normalize
-    in
-    ( { a | n = n }
-    , { b | n = n }
-    , { c | n = n }
-    )
