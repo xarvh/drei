@@ -29,7 +29,7 @@ meshParser : Parser Mesh
 meshParser =
     emptyAccumulator
         |> WavefrontObject.customContainerParser applyLine
-        |> Parser.map (.faces >> List.foldl faceToTriangles [])
+        |> Parser.map (.faces >> List.foldl faceToTriangles [] >> List.map fixNormal)
 
 
 
@@ -155,3 +155,21 @@ tailToTris a tail tris =
 
         _ ->
             tris
+
+
+fixNormal : ( VertexAttributes, VertexAttributes, VertexAttributes ) -> ( VertexAttributes, VertexAttributes, VertexAttributes )
+fixNormal ( a, b, c ) =
+    let
+        ab =
+            Vec3.sub b.v a.v
+
+        ac =
+            Vec3.sub c.v a.v
+
+        n =
+            Vec3.cross ab ac |> Vec3.normalize
+    in
+    ( { a | n = n }
+    , { b | n = n }
+    , { c | n = n }
+    )
