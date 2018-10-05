@@ -29,9 +29,8 @@ type alias Uniforms =
 
 
 type alias Varyings =
-    { surface_j : Vec3
-    , surface_i : Vec3
-    , localPosition : Vec3
+    { localPosition : Vec3
+    , texturePosition : Vec2
     }
 
 
@@ -52,17 +51,14 @@ vertexShader =
         uniform mat4 transform;
         uniform sampler2D t;
 
-        varying vec3 surface_i;
-        varying vec3 surface_j;
         varying vec3 localPosition;
+        varying vec2 texturePosition;
 
         void main () {
             localPosition = v;
-            surface_i = i;
-            surface_j = j;
+            texturePosition = vec2(dot(v, i), dot(v, j));
+
             gl_Position = transform * vec4(v, 1.0);
-            vfog = length(gl_Position.xyz) / 10.0;
-            vnormal = normalize((transform * vec4(n, 1.0)).xyz);
         }
     |]
 
@@ -76,12 +72,9 @@ fragmentShader =
         uniform sampler2D t;
 
         varying vec3 localPosition;
-        varying vec3 surface_i;
-        varying vec3 surface_j;
+        varying vec2 texturePosition;
 
         void main() {
-          vec2 texturePosition = vec2( dot(localPosition, surface_i), dot(localPosition, surface_j));
-
             gl_FragColor = texture2D(t, texturePosition);
         }
     |]
